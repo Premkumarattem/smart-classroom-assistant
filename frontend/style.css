@@ -1,0 +1,1398 @@
+:root {
+  --board:        #16302A;
+  --board-panel:  #1E3F37;
+  --board-panel-2:#234A40;
+  --chalk:        #F1EDE2;
+  --chalk-dim:    #B9C9C1;
+  --amber:        #E8A33D;
+  --teal:         #7FA69A;
+  --alert:        #D9694F;
+  --rule:         rgba(241, 237, 226, 0.12);
+
+  --font-display: 'Fraunces', serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--board);
+  color: var(--chalk);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+/* ---------- Header ---------- */
+
+.ledger-header {
+  position: relative;
+  padding: 28px 40px 22px;
+  border-bottom: 1px solid var(--rule);
+  overflow: hidden;
+}
+
+.chalk-dust {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 30%, rgba(241,237,226,0.06), transparent),
+    radial-gradient(1px 1px at 80% 60%, rgba(241,237,226,0.05), transparent),
+    radial-gradient(1.5px 1.5px at 45% 80%, rgba(241,237,226,0.04), transparent),
+    radial-gradient(1px 1px at 65% 20%, rgba(241,237,226,0.05), transparent);
+  pointer-events: none;
+}
+
+.header-row {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 6px;
+}
+
+.header-title h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 34px;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.session-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--chalk-dim);
+}
+
+.dot-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chalk-dim);
+}
+
+.dot-status.live .dot {
+  background: var(--alert);
+  animation: pulse 1.4s infinite;
+}
+
+.dot-status.live { color: var(--alert); }
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(217,105,79,0.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(217,105,79,0); }
+  100% { box-shadow: 0 0 0 0 rgba(217,105,79,0); }
+}
+
+/* ---------- Board / grid ---------- */
+
+.board {
+  display: grid;
+  grid-template-columns: 1fr 360px 360px;
+  gap: 1px;
+  background: var(--rule);
+}
+
+@media (max-width: 1000px) {
+  .board { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--board);
+  padding: 22px 24px 26px;
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.panel-number {
+  font-family: var(--font-display);
+  color: var(--amber);
+  font-size: 15px;
+}
+
+.panel-head h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 18px;
+  margin: 0;
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--amber);
+  color: #1B2420;
+}
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary.active {
+  background: var(--alert);
+  color: var(--chalk);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--rule);
+  color: var(--chalk-dim);
+}
+.btn-ghost:hover { border-color: var(--teal); color: var(--chalk); }
+
+.btn-small { padding: 5px 10px; font-size: 11px; }
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--chalk-dim);
+  font-family: var(--font-mono);
+}
+
+/* ---------- Panel 1: camera / roster ---------- */
+
+.camera-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #0F221D;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  border: 1px solid var(--rule);
+}
+
+#cam, #overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-off-msg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--chalk-dim);
+}
+
+.engagement-readout {
+  margin-left: auto;
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.engagement-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--chalk-dim);
+}
+
+.engagement-value {
+  font-size: 20px;
+  color: var(--teal);
+  font-weight: 500;
+}
+
+.roster {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.roster-head {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--chalk-dim);
+  margin-bottom: 8px;
+}
+
+#rosterList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+#rosterList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+  border-bottom: 1px dashed var(--rule);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+#rosterList li .mark {
+  color: var(--chalk-dim);
+}
+
+#rosterList li.present .mark {
+  color: var(--teal);
+}
+
+#rosterList li.present .mark::before {
+  content: "✓ ";
+}
+
+#rosterList li:not(.present) .mark::before {
+  content: "· ";
+}
+
+.add-student-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.add-student-form input {
+  flex: 1;
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: var(--chalk);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ---------- Panel 2: transcript ---------- */
+
+.transcript-box {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--chalk-dim);
+  height: 220px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.transcript-box .line {
+  color: var(--chalk);
+  margin: 0 0 6px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.notes-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.notes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--chalk-dim);
+  margin-bottom: 8px;
+}
+
+.notes-content {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.notes-content ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.notes-content li { margin-bottom: 6px; }
+
+/* ---------- Panel 3: Q&A ---------- */
+
+.qa-thread {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qa-item .q {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--amber);
+  margin-bottom: 4px;
+}
+
+.qa-item .a {
+  font-size: 14px;
+  line-height: 1.55;
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.qa-form {
+  display: flex;
+  gap: 8px;
+}
+
+.qa-form input {
+  flex: 1;
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--chalk);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.placeholder {
+  color: var(--chalk-dim);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* =================================================================
+   Utility
+   ================================================================= */
+.hidden { display: none !important; }
+
+/* =================================================================
+   Auth screen
+   ================================================================= */
+.auth-screen {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  overflow: hidden;
+}
+
+.auth-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 36px 34px 30px;
+}
+
+.auth-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 26px;
+  margin: 6px 0 10px;
+}
+
+.auth-sub {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--chalk-dim);
+  margin: 0 0 24px;
+}
+
+.auth-form label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chalk-dim);
+  margin-bottom: 14px;
+}
+
+.auth-form input[type="text"],
+.auth-form input[type="email"],
+.auth-form input[type="password"],
+.auth-form select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  background: var(--board);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--chalk);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+.auth-form input:focus,
+.auth-form select:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+
+.disability-fieldset {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 14px 14px 6px;
+  margin: 4px 0 18px;
+}
+
+.disability-fieldset legend {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--amber);
+  padding: 0 6px;
+}
+
+.legend-hint {
+  text-transform: none;
+  color: var(--chalk-dim);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.chip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--board);
+  border: 1px solid var(--rule);
+  border-radius: 20px;
+  padding: 7px 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--chalk);
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.chip:has(input:checked) {
+  border-color: var(--amber);
+  background: rgba(232, 163, 61, 0.12);
+}
+
+.chip input { accent-color: var(--amber); }
+
+.btn-wide { width: 100%; margin-top: 4px; }
+
+.auth-error {
+  color: var(--alert);
+  font-size: 12px;
+  font-family: var(--font-body);
+  min-height: 16px;
+  margin: 4px 0 10px;
+}
+
+.auth-switch {
+  text-align: center;
+  font-size: 12px;
+  color: var(--chalk-dim);
+  margin-top: 16px;
+}
+
+.auth-switch a { color: var(--teal); }
+
+.session-meta #welcomeUser {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--teal);
+}
+
+/* =================================================================
+   Floating accessibility toolbar
+   ================================================================= */
+.a11y-toolbar {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 50;
+}
+
+.a11y-toggle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  background: var(--amber);
+  color: #1B2420;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+}
+
+.a11y-panel {
+  position: absolute;
+  bottom: 56px;
+  right: 0;
+  width: 230px;
+  background: var(--board-panel-2);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.a11y-panel h3 {
+  font-family: var(--font-display);
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.a11y-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.a11y-row input { accent-color: var(--amber); }
+
+.a11y-fontsize { justify-content: space-between; cursor: default; }
+
+/* =================================================================
+   Accessibility profile states (applied to <body>)
+   ================================================================= */
+
+/* High contrast mode — for low vision */
+body.high-contrast {
+  --board: #000000;
+  --board-panel: #0A0A0A;
+  --board-panel-2: #141414;
+  --chalk: #FFFFFF;
+  --chalk-dim: #E4E4E4;
+  --amber: #FFD166;
+  --teal: #6FE7C8;
+  --rule: rgba(255,255,255,0.3);
+}
+
+/* Dyslexia / readability-friendly font */
+body.dyslexia-font,
+body.dyslexia-font input,
+body.dyslexia-font button,
+body.dyslexia-font select {
+  font-family: 'Lexend', var(--font-body) !important;
+  letter-spacing: 0.01em;
+}
+body.dyslexia-font .transcript-box,
+body.dyslexia-font .notes-content {
+  line-height: 1.85;
+}
+
+/* Focus mode — reduce visual clutter, good for ADHD */
+body.focus-mode .panel-roll .camera-wrap,
+body.focus-mode .hint {
+  display: none;
+}
+body.focus-mode .panel {
+  min-height: auto;
+}
+
+/* Text size scaling */
+body.text-small { font-size: 13px; }
+body.text-large { font-size: 18px; }
+body.text-xlarge { font-size: 21px; }
+body.text-large .header-title h1 { font-size: 38px; }
+body.text-xlarge .header-title h1 { font-size: 42px; }
+
+/* Motor/speech: bigger click targets everywhere */
+body.big-targets .btn,
+body.big-targets #rosterList li,
+body.big-targets .qa-form input,
+body.big-targets .qa-form button {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  font-size: 15px;
+}
+body.big-targets .a11y-toggle {
+  width: 56px;
+  height: 56px;
+}
+
+/* =================================================================
+   Face recognition additions
+   ================================================================= */
+.recognized-line {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--chalk-dim);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.recognized-line.active { color: var(--teal); }
+
+#rosterList li {
+  gap: 8px;
+}
+
+#rosterList li .name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+#rosterList li .enroll-btn {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--chalk-dim);
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 3px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#rosterList li .enroll-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+#rosterList li .enroll-btn.enrolled {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+#rosterList li.auto-recognized {
+  animation: recognizedFlash 1.4s ease;
+}
+
+@keyframes recognizedFlash {
+  0%   { background: rgba(127, 166, 154, 0.35); }
+  100% { background: transparent; }
+}
+
+/* =================================================================
+   "I didn't understand" — simple explanation feature
+   ================================================================= */
+.btn-explain {
+  width: 100%;
+  background: transparent;
+  border: 1.5px dashed var(--amber);
+  color: var(--amber);
+  padding: 11px 14px;
+  font-size: 13px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+}
+
+.btn-explain:hover {
+  background: rgba(232, 163, 61, 0.1);
+}
+
+.btn-explain.loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.explain-card {
+  background: rgba(232, 163, 61, 0.08);
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  animation: fadeIn 0.25s ease;
+}
+
+.explain-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  margin-bottom: 8px;
+}
+
+.explain-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chalk);
+}
+
+body.dyslexia-font .explain-card p {
+  line-height: 1.85;
+}
+
+/* =================================================================
+   Role tabs (login/register)
+   ================================================================= */
+.role-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  background: var(--board);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.role-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--chalk-dim);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.role-tab.active {
+  background: var(--amber);
+  color: #1B2420;
+}
+
+/* =================================================================
+   Field labels (teacher / college forms)
+   ================================================================= */
+.field-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chalk-dim);
+  margin-bottom: 14px;
+}
+
+.field-label input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  background: var(--board);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 9px 11px;
+  color: var(--chalk);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.mini-head {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--chalk-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 18px 0 10px;
+}
+
+/* =================================================================
+   Teacher dashboard
+   ================================================================= */
+.board-teacher {
+  grid-template-columns: 380px 1fr 340px;
+}
+
+.active-banner {
+  margin-bottom: 12px;
+}
+
+.doubt-actions {
+  margin-bottom: 14px;
+}
+
+.raise-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.raise-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--board-panel);
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  animation: fadeIn 0.25s ease;
+}
+
+.raise-list li.placeholder {
+  border-color: var(--rule);
+  color: var(--chalk-dim);
+  font-style: italic;
+}
+
+.raise-list li.urgent {
+  border-color: var(--alert);
+  background: rgba(217, 105, 79, 0.12);
+  animation: pulse 1.4s infinite;
+}
+
+.raise-list li .resolve-btn {
+  background: transparent;
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.chat-thread {
+  max-height: 160px;
+}
+
+/* =================================================================
+   College dashboard
+   ================================================================= */
+.board-college {
+  grid-template-columns: 300px 1fr;
+}
+
+.class-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.class-list li {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.class-list li.placeholder {
+  font-style: italic;
+  color: var(--chalk-dim);
+  border-style: dashed;
+}
+
+.class-list .class-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--amber);
+  margin-bottom: 4px;
+}
+
+.class-list .class-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--chalk-dim);
+}
+
+/* =================================================================
+   Language font support
+   ================================================================= */
+[lang="te"] { font-family: 'Noto Sans Telugu', var(--font-body); }
+[lang="hi"] { font-family: 'Noto Sans Devanagari', var(--font-body); }
+
+/* =================================================================
+   Teacher camera preview + recording playback
+   ================================================================= */
+.cam-preview-wrap {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #0F221D;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  margin-bottom: 12px;
+}
+
+#teacherCamPreview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#recordingPlayback {
+  margin-top: 14px;
+}
+
+#recordingPlayback video {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--rule);
+}
+
+.recording-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--teal);
+  text-decoration: none;
+  border: 1px solid var(--teal);
+  border-radius: 5px;
+  padding: 4px 9px;
+}
+
+.recording-link:hover {
+  background: rgba(127, 166, 154, 0.15);
+}
+
+/* =================================================================
+   Emergency Help button
+   ================================================================= */
+.btn-emergency {
+  background: var(--alert);
+  color: var(--chalk);
+  margin-top: 8px;
+}
+.btn-emergency:hover { opacity: 0.9; }
+
+/* =================================================================
+   Accessibility toolbar v2 — theme swatches, font presets
+   ================================================================= */
+.a11y-subhead {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--chalk-dim);
+  margin: 10px 0 6px;
+}
+
+.theme-swatches {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.theme-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.theme-swatch.active { border-color: var(--amber); }
+
+.theme-default { background: linear-gradient(135deg, #16302A 50%, #F1EDE2 50%); }
+.theme-bw { background: linear-gradient(135deg, #000000 50%, #FFFFFF 50%); }
+.theme-yb { background: linear-gradient(135deg, #000000 50%, #FFD400 50%); }
+.theme-blue { background: linear-gradient(135deg, #0B3D91 50%, #FFFFFF 50%); }
+
+.fontsize-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.fs-btn {
+  flex: 1;
+  background: var(--board);
+  border: 1px solid var(--rule);
+  color: var(--chalk-dim);
+  border-radius: 5px;
+  padding: 6px 0;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.fs-btn.active {
+  background: var(--amber);
+  color: #1B2420;
+  border-color: var(--amber);
+}
+
+.a11y-hint {
+  font-size: 10.5px;
+  color: var(--chalk-dim);
+  line-height: 1.4;
+  margin: 6px 0 0;
+}
+
+/* =================================================================
+   Theme presets (applied to <body>)
+   ================================================================= */
+body.theme-bw {
+  --board: #000000; --board-panel: #0A0A0A; --board-panel-2: #141414;
+  --chalk: #FFFFFF; --chalk-dim: #DDDDDD; --amber: #FFFFFF; --teal: #AAAAAA; --rule: rgba(255,255,255,0.35);
+}
+body.theme-yb {
+  --board: #000000; --board-panel: #111111; --board-panel-2: #1A1A1A;
+  --chalk: #FFD400; --chalk-dim: #E6C300; --amber: #FFD400; --teal: #FFD400; --rule: rgba(255,212,0,0.4);
+}
+body.theme-blue {
+  --board: #0B3D91; --board-panel: #123B8F; --board-panel-2: #1848A8;
+  --chalk: #FFFFFF; --chalk-dim: #DCE6FA; --amber: #FFD166; --teal: #9FD3FF; --rule: rgba(255,255,255,0.3);
+}
+
+/* =================================================================
+   Magnifier mode
+   ================================================================= */
+.magnifier-glass {
+  position: fixed;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 3px solid var(--amber);
+  pointer-events: none;
+  z-index: 999;
+  box-shadow: 0 0 0 2000px rgba(0,0,0,0.35);
+  transform: scale(1.8);
+  transform-origin: center;
+  background-repeat: no-repeat;
+  display: none;
+}
+body.magnifier-active .magnifier-glass { display: block; }
+body.magnifier-active { cursor: none; }
+
+/* =================================================================
+   Accessibility snapshot (teacher)
+   ================================================================= */
+.a11y-snapshot {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.a11y-snapshot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.a11y-snapshot-grid .stat-chip {
+  background: var(--board);
+  border: 1px solid var(--rule);
+  border-radius: 20px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  color: var(--chalk-dim);
+  font-family: var(--font-mono);
+}
+
+.a11y-snapshot-grid .stat-chip strong { color: var(--amber); }
+
+/* =================================================================
+   Badges
+   ================================================================= */
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.badge-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 20px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: var(--chalk-dim);
+  opacity: 0.4;
+}
+
+.badge-chip.earned {
+  opacity: 1;
+  border-color: var(--amber);
+  color: var(--chalk);
+}
+
+/* =================================================================
+   Flashcards
+   ================================================================= */
+.flashcards-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.flashcard {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 90px;
+  cursor: pointer;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background 0.2s ease;
+}
+
+.flashcard .fc-q { color: var(--chalk); font-weight: 600; }
+.flashcard .fc-a { color: var(--teal); display: none; }
+.flashcard.flipped .fc-q { display: none; }
+.flashcard.flipped .fc-a { display: block; }
+.flashcard:hover { border-color: var(--amber); }
+
+/* =================================================================
+   Mind map
+   ================================================================= */
+.mindmap-container { margin-top: 12px; }
+
+.mm-topic {
+  background: var(--amber);
+  color: #1B2420;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.mm-branch {
+  background: var(--board-panel);
+  border-left: 3px solid var(--teal);
+  border-radius: 0 6px 6px 0;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.mm-branch-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--chalk);
+  margin-bottom: 4px;
+}
+
+.mm-branch ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.mm-branch li {
+  font-size: 11.5px;
+  color: var(--chalk-dim);
+  margin-bottom: 2px;
+}
+
+/* =================================================================
+   Sign Language Glossary (prototype)
+   ================================================================= */
+.sign-glossary {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.proto-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--amber);
+  color: #1B2420;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.sign-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sign-card {
+  background: var(--board);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.sign-card .sign-emoji-badge {
+  font-size: 20px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.sign-card .sign-hand-icon {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 2px;
+  opacity: 0.7;
+}
+
+.sign-card .sign-label {
+  font-size: 10px;
+  color: var(--chalk-dim);
+  display: block;
+}
+
+.sign-card.active {
+  border-color: var(--amber);
+  background: rgba(232, 163, 61, 0.15);
+  animation: recognizedFlash 2s ease;
+}
+
+/* =================================================================
+   OCR / Reading Helper
+   ================================================================= */
+.ocr-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--rule);
+}
+
+.ocr-upload-label {
+  display: block;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.ocr-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+#ocrResult {
+  margin-top: 10px;
+  white-space: pre-wrap;
+}
+
+/* =================================================================
+   Screen reader / keyboard accessibility
+   ================================================================= */
+.skip-link {
+  position: absolute;
+  top: -60px;
+  left: 12px;
+  z-index: 1000;
+  background: var(--amber);
+  color: #1B2420;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+/* Visible focus ring for keyboard navigation everywhere in the app */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+main:focus {
+  outline: none;
+}

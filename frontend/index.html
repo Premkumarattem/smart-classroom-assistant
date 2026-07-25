@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart Classroom Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Lexend:wght@400;500;600&family=Noto+Sans+Telugu:wght@400;600&family=Noto+Sans+Devanagari:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<a href="#" id="skipLinkBtn" class="skip-link">Skip to main content</a>
+
+<!-- ================= AUTH SCREEN ================= -->
+<div id="authScreen" class="auth-screen">
+  <div class="chalk-dust"></div>
+  <div class="auth-card">
+    <span class="eyebrow">Smart Classroom Assistant</span>
+    <h1 class="auth-title">Every student, included.</h1>
+    <p class="auth-sub">Live captions, one-tap simple re-explanations, hand-raise and chat for students who can't speak — in English, Telugu, or Hindi.</p>
+
+    <!-- ROLE TABS -->
+    <div class="role-tabs" id="roleTabs">
+      <button type="button" class="role-tab active" data-role="student">Student</button>
+      <button type="button" class="role-tab" data-role="teacher">Teacher</button>
+      <button type="button" class="role-tab" data-role="college">College</button>
+    </div>
+
+    <!-- LOGIN -->
+    <form id="loginForm" class="auth-form">
+      <label>Email
+        <input type="email" id="loginEmail" required placeholder="you@school.edu" />
+      </label>
+      <label>Password
+        <input type="password" id="loginPassword" required placeholder="••••••••" />
+      </label>
+      <p class="auth-error" id="loginError"></p>
+      <button type="submit" class="btn btn-primary btn-wide">Log in</button>
+      <p class="auth-switch">New here? <a href="#" id="showRegister">Create an account</a></p>
+    </form>
+
+    <!-- REGISTER -->
+    <form id="registerForm" class="auth-form hidden">
+      <label>Full name
+        <input type="text" id="regName" required placeholder="Full name" />
+      </label>
+      <label>Email
+        <input type="email" id="regEmail" required placeholder="you@school.edu" />
+      </label>
+      <label>Password
+        <input type="password" id="regPassword" required placeholder="min. 4 characters" />
+      </label>
+      <label>College / Institution name
+        <input type="text" id="regCollege" required placeholder="e.g. ABC College of Engineering" />
+      </label>
+      <label>Preferred language
+        <select id="regLanguage">
+          <option value="english">English</option>
+          <option value="telugu">తెలుగు (Telugu)</option>
+          <option value="hindi">हिन्दी (Hindi)</option>
+        </select>
+      </label>
+
+      <fieldset class="disability-fieldset" id="disabilityFieldset">
+        <legend>Accessibility needs <span class="legend-hint">(select any that apply — this tunes the whole dashboard for you)</span></legend>
+        <div class="chip-grid">
+          <label class="chip"><input type="checkbox" value="vision" /> <span>Blind / low vision</span></label>
+          <label class="chip"><input type="checkbox" value="hearing" /> <span>Deaf / hard of hearing</span></label>
+          <label class="chip"><input type="checkbox" value="speech" /> <span>Can't speak (mute)</span></label>
+          <label class="chip"><input type="checkbox" value="dyslexia" /> <span>Dyslexia / reading difficulty</span></label>
+          <label class="chip"><input type="checkbox" value="adhd" /> <span>ADHD / attention difficulty</span></label>
+          <label class="chip"><input type="checkbox" value="motor" /> <span>Motor difficulty</span></label>
+          <label class="chip"><input type="checkbox" value="none" /> <span>None of these</span></label>
+        </div>
+        <p class="legend-hint" style="margin-top:8px;">Deaf and mute at once? Just select both — everything below combines automatically.</p>
+      </fieldset>
+
+      <p class="auth-error" id="registerError"></p>
+      <button type="submit" class="btn btn-primary btn-wide">Create account</button>
+      <p class="auth-switch">Already registered? <a href="#" id="showLogin">Log in</a></p>
+    </form>
+  </div>
+</div>
+
+<!-- ================= TEACHER DASHBOARD ================= -->
+<div id="teacherScreen" class="hidden">
+  <header class="ledger-header">
+    <div class="chalk-dust"></div>
+    <div class="header-row">
+      <div class="header-title">
+        <span class="eyebrow" id="teacherCollegeLabel">College</span>
+        <h1>Teacher Dashboard</h1>
+      </div>
+      <div class="session-meta">
+        <span id="welcomeUserTeacher"></span>
+        <span id="clockTeacher">--:--:--</span>
+        <button id="logoutBtnTeacher" class="btn btn-ghost btn-small">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="board board-teacher" tabindex="-1" aria-label="Teacher dashboard">
+    <section class="panel panel-class-control">
+      <div class="panel-head"><span class="panel-number">I</span><h2>Class Session</h2></div>
+
+      <div class="a11y-snapshot" id="a11ySnapshot">
+        <span class="mini-head" style="margin:0 0 8px;">Accessibility snapshot for your college</span>
+        <div id="a11ySnapshotContent" class="a11y-snapshot-grid">
+          <span class="placeholder">Loading…</span>
+        </div>
+      </div>
+
+      <div id="classStartForm">
+        <label class="field-label">Subject
+          <input type="text" id="subjectInput" placeholder="e.g. Physics — Newton's Laws" />
+        </label>
+        <button id="startClassBtn" class="btn btn-primary btn-wide">▶ Start Class (record video + captions)</button>
+        <p class="hint">Records video + audio from this device's camera/mic and streams live captions to students. Chrome only.</p>
+      </div>
+
+      <div id="classActivePanel" class="hidden">
+        <div class="active-banner">
+          <span class="dot-status live"><span class="dot"></span> recording — <span id="activeSubjectLabel"></span></span>
+        </div>
+        <div class="cam-preview-wrap">
+          <video id="teacherCamPreview" autoplay muted playsinline></video>
+        </div>
+        <div class="transcript-box" id="transcriptBoxTeacher" aria-live="polite">
+          <p class="placeholder">Live transcript will appear here…</p>
+        </div>
+        <button id="stopClassBtn" class="btn btn-explain btn-wide">■ Stop Class &amp; Generate Smart Notes</button>
+      </div>
+
+      <div id="classNotesPanel" class="hidden">
+        <h3 class="mini-head">AI Smart Notes</h3>
+        <div id="smartNotesContent" class="notes-content"></div>
+        <div id="recordingPlayback"></div>
+      </div>
+    </section>
+
+    <section class="panel panel-hand-raises">
+      <div class="panel-head"><span class="panel-number">II</span><h2>Raised Hands</h2></div>
+      <ul id="handRaiseList" class="raise-list">
+        <li class="placeholder">No hands raised yet.</li>
+      </ul>
+    </section>
+
+    <section class="panel panel-chat">
+      <div class="panel-head"><span class="panel-number">III</span><h2>Student Chat</h2></div>
+      <div id="teacherChatThread" class="qa-thread">
+        <p class="placeholder">Messages from students who can't speak will appear here.</p>
+      </div>
+      <form id="teacherChatForm" class="qa-form">
+        <input type="text" id="teacherChatInput" placeholder="Reply to the class…" autocomplete="off" />
+        <button type="submit" class="btn btn-primary">Send</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<!-- ================= STUDENT DASHBOARD ================= -->
+<div id="studentScreen" class="hidden">
+  <header class="ledger-header">
+    <div class="chalk-dust"></div>
+    <div class="header-row">
+      <div class="header-title">
+        <span class="eyebrow">Room · Live Session</span>
+        <h1>Student Dashboard</h1>
+      </div>
+      <div class="session-meta">
+        <span id="welcomeUserStudent"></span>
+        <span id="clockStudent">--:--:--</span>
+        <button id="logoutBtnStudent" class="btn btn-ghost btn-small">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="board" tabindex="-1" aria-label="Student dashboard">
+    <section class="panel panel-transcript">
+      <div class="panel-head"><span class="panel-number">I</span><h2>Live Captions &amp; Notes</h2></div>
+      <p class="hint" id="noActiveClassMsg">No class is live right now for your college. This checks every few seconds.</p>
+
+      <div class="transcript-box" id="transcriptBoxStudent" aria-live="polite" role="log" aria-label="Live lecture captions">
+        <p class="placeholder">Live captions will appear here once a class starts…</p>
+      </div>
+
+      <div class="sign-glossary" id="signGlossary">
+        <h3 class="mini-head">🤟 Sign Language Glossary <span class="proto-tag">prototype</span></h3>
+        <p class="hint">Illustrative reference cards for common classroom phrases — highlights when heard in class. Not verified ASL/ISL; a real deployment would use filmed clips from a certified signer.</p>
+        <div class="sign-grid" id="signGrid"></div>
+      </div>
+
+      <button id="explainBtn" class="btn btn-explain" aria-label="Explain the last part of the lecture more simply">🤔 I didn't understand that — explain simply</button>
+      <div id="explainCard" class="explain-card hidden" aria-live="polite">
+        <div class="explain-head">
+          <span>simple explanation</span>
+          <button id="readExplainBtn" class="btn btn-ghost btn-small">🔊 read aloud</button>
+        </div>
+        <p id="explainText"></p>
+      </div>
+
+      <div class="notes-box">
+        <div class="notes-head">
+          <span>auto notes</span>
+          <span class="notes-head-actions">
+            <button id="readNotesBtn" class="btn btn-ghost btn-small">🔊 read aloud</button>
+            <button id="summarizeBtn" class="btn btn-ghost btn-small">refresh notes</button>
+          </span>
+        </div>
+        <div id="notesContent" class="notes-content">
+          <p class="placeholder">Bullet notes generate automatically as the lecture progresses.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel panel-qa">
+      <div class="panel-head"><span class="panel-number">II</span><h2>Ask &amp; Get Help</h2></div>
+
+      <div class="doubt-actions">
+        <button id="raiseHandBtn" class="btn btn-primary btn-wide" aria-label="Raise hand to ask the teacher a question">🖐 Raise Hand</button>
+        <button id="emergencyBtn" class="btn btn-emergency btn-wide" aria-label="Send urgent emergency alert to the teacher">🚨 Emergency Help</button>
+      </div>
+
+      <div class="qa-thread" id="qaThread" aria-live="polite" role="log" aria-label="Questions and answers">
+        <p class="placeholder">Questions are answered using only what's been said in class so far.</p>
+      </div>
+      <form id="qaForm" class="qa-form">
+        <input type="text" id="qaInput" placeholder="Ask about today's lecture…" autocomplete="off" />
+        <button type="submit" class="btn btn-primary">Ask</button>
+      </form>
+
+      <h3 class="mini-head">Chat with teacher</h3>
+      <div class="qa-thread chat-thread" id="studentChatThread">
+        <p class="placeholder">Type instead of speaking — the teacher sees this live.</p>
+      </div>
+      <form id="studentChatForm" class="qa-form">
+        <input type="text" id="studentChatInput" placeholder="Type a message…" autocomplete="off" />
+        <button type="submit" class="btn btn-primary">Send</button>
+      </form>
+    </section>
+
+    <section class="panel panel-study">
+      <div class="panel-head"><span class="panel-number">III</span><h2>Study Tools</h2></div>
+
+      <div class="badge-row" id="badgeRow"></div>
+
+      <button id="flashcardsBtn" class="btn btn-primary btn-wide">🎴 Generate Flashcards</button>
+      <div id="flashcardsContainer" class="flashcards-container"></div>
+
+      <button id="mindmapBtn" class="btn btn-primary btn-wide" style="margin-top:14px;">🧠 Generate Mind Map</button>
+      <div id="mindmapContainer" class="mindmap-container"></div>
+
+      <div class="ocr-section">
+        <h3 class="mini-head">📖 Reading Helper — photograph any page</h3>
+        <p class="hint">Take or choose a photo of a textbook page — it's read aloud and summarized.</p>
+        <label class="btn btn-primary btn-wide ocr-upload-label">
+          📷 Choose / take a photo
+          <input type="file" id="ocrFileInput" accept="image/*" capture="environment" class="ocr-file-input" />
+        </label>
+        <div id="ocrResult" class="notes-content"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ================= COLLEGE ADMIN DASHBOARD ================= -->
+<div id="collegeScreen" class="hidden">
+  <header class="ledger-header">
+    <div class="chalk-dust"></div>
+    <div class="header-row">
+      <div class="header-title">
+        <span class="eyebrow">Institution Overview</span>
+        <h1>College Dashboard</h1>
+      </div>
+      <div class="session-meta">
+        <span id="welcomeUserCollege"></span>
+        <button id="logoutBtnCollege" class="btn btn-ghost btn-small">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="board board-college" tabindex="-1" aria-label="College dashboard">
+    <section class="panel panel-filters">
+      <div class="panel-head"><span class="panel-number">I</span><h2>Find Classes</h2></div>
+      <label class="field-label">Subject <input type="text" id="filterSubject" placeholder="e.g. Physics" /></label>
+      <label class="field-label">Teacher <input type="text" id="filterTeacher" placeholder="e.g. Ms. Rao" /></label>
+      <label class="field-label">Date <input type="date" id="filterDate" /></label>
+      <button id="applyFiltersBtn" class="btn btn-primary btn-wide">Search</button>
+    </section>
+
+    <section class="panel panel-classlist">
+      <div class="panel-head"><span class="panel-number">II</span><h2>Classes — date, subject &amp; teacher wise</h2></div>
+      <ul id="collegeClassList" class="class-list">
+        <li class="placeholder">No classes recorded yet for this institution.</li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<!-- Floating accessibility toolbar (student view only) -->
+<div class="a11y-toolbar hidden" id="a11yToolbar">
+  <button class="a11y-toggle" id="a11yToggle" aria-label="Open accessibility settings menu" aria-expanded="false" aria-controls="a11yPanel">⚙</button>
+  <div class="a11y-panel hidden" id="a11yPanel" role="region" aria-label="Accessibility settings">
+    <h3>Accessibility</h3>
+
+    <span class="a11y-subhead">Theme</span>
+    <div class="theme-swatches" id="themeSwatches">
+      <button type="button" class="theme-swatch theme-default active" data-theme="default" title="Default"></button>
+      <button type="button" class="theme-swatch theme-bw" data-theme="bw" title="Black &amp; White"></button>
+      <button type="button" class="theme-swatch theme-yb" data-theme="yb" title="Yellow &amp; Black"></button>
+      <button type="button" class="theme-swatch theme-blue" data-theme="blue" title="Blue &amp; White"></button>
+    </div>
+
+    <span class="a11y-subhead">Text size</span>
+    <div class="fontsize-row">
+      <button type="button" class="fs-btn" data-size="0">S</button>
+      <button type="button" class="fs-btn active" data-size="1">M</button>
+      <button type="button" class="fs-btn" data-size="2">L</button>
+      <button type="button" class="fs-btn" data-size="3">XL</button>
+    </div>
+
+    <label class="a11y-row"><input type="checkbox" id="toggleDyslexiaFont" /> Readable font</label>
+    <label class="a11y-row"><input type="checkbox" id="toggleFocusMode" /> Focus mode (less clutter)</label>
+    <label class="a11y-row"><input type="checkbox" id="toggleAutoRead" /> Auto read-aloud answers</label>
+    <label class="a11y-row"><input type="checkbox" id="toggleSimpleLanguage" /> Simple language mode</label>
+    <label class="a11y-row"><input type="checkbox" id="toggleMagnifier" /> Magnifier mode</label>
+    <label class="a11y-row"><input type="checkbox" id="toggleVoiceCommands" /> Voice commands</label>
+    <p class="a11y-hint">Voice commands: "explain that", "ask a question", "raise hand"</p>
+  </div>
+</div>
+
+<div class="magnifier-glass hidden" id="magnifierGlass"></div>
+
+<script defer src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Python
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# Local data — never commit real user data or recordings
+backend/app.db
+backend/users.db
+backend/recordings/
+
+# Secrets
+backend/.env
+.env
+
+# OS/editor noise
+.DS_Store
+*.log

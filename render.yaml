@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: smart-classroom-assistant
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false   # you'll paste this in manually in the Render dashboard, not in git
+    autoDeploy: true
+
+# NOTE on persistent storage:
+# The free plan above does NOT include a persistent disk — app.db and any
+# recorded videos reset every time the service restarts or redeploys.
+# That's fine for a hackathon demo (you'll just register fresh test
+# accounts). If you want data to survive long-term, upgrade this service
+# to a paid instance type in the Render dashboard and attach a disk
+# mounted at /opt/render/project/src/backend — see the README's
+# "Deploying" section for exact steps.
