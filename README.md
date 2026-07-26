@@ -152,11 +152,32 @@ cd backend
 python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Pick an AI provider — **Groq is free** (no card, 30 requests/min), **Anthropic** costs money after its one-time trial credit but is generally higher quality:
+
+```bash
+# Free option (default if you don't set anything):
+export MODEL_PROVIDER=groq
+export GROQ_API_KEY=gsk_...          # get one free at console.groq.com
+
+# OR, paid option:
+export MODEL_PROVIDER=anthropic
+export ANTHROPIC_API_KEY=sk-ant-...  # get one at console.anthropic.com
+```
+
+Then start the server:
+
+```bash
 uvicorn app:app --reload --port 8000
 ```
 
 Check http://localhost:8000/api/health → `{"status":"ok"}`.
+
+**A heads-up about Groq specifically:** Groq's hosted model lineup changes more often than Anthropic's — they deprecated several models in 2026 already. If an AI feature suddenly starts erroring, check
+[console.groq.com/docs/models](https://console.groq.com/docs/models) and
+update `GROQ_TEXT_MODEL` / `GROQ_VISION_MODEL` as environment variables
+(no code changes needed) — see `.env.example` for the exact variable names.
 
 ## 2. Frontend
 
@@ -211,12 +232,16 @@ This repo includes a `render.yaml` at the root, so Render can configure
 almost everything automatically — you mostly just connect the repo and
 paste in your API key.
 
-#### Step 1 — Get an Anthropic API key ready
+#### Step 1 — Get an API key ready
 
-Go to [console.anthropic.com](https://console.anthropic.com), sign in,
-and create an API key if you don't already have one. Copy it somewhere —
-you'll paste it into Render in Step 4, never into any file that gets
-committed to git.
+This project defaults to **Groq** — free, no credit card, 30 requests/min.
+Go to [console.groq.com](https://console.groq.com), sign in, create an API
+key. Copy it somewhere — you'll paste it into Render in Step 4, never into
+any file that gets committed to git.
+
+*(Prefer Claude's quality and don't mind paying after the trial credit?
+Get a key at [console.anthropic.com](https://console.anthropic.com)
+instead, and set `MODEL_PROVIDER=anthropic` in Step 4.)*
 
 #### Step 2 — Push this project to GitHub
 
@@ -260,9 +285,13 @@ If you've never used git/GitHub before, this is the whole process:
 
 1. Once the service exists, open it in the Render dashboard.
 2. Go to the **Environment** tab.
-3. You'll see `ANTHROPIC_API_KEY` listed but empty (because `render.yaml`
-   marked it `sync: false` on purpose, so it's never stored in git). Click
-   into it and paste your real key from Step 1. Save.
+3. `render.yaml` already set `MODEL_PROVIDER` to `groq` for you (the free
+   option). You'll see `GROQ_API_KEY` and `ANTHROPIC_API_KEY` listed but
+   empty — that's on purpose (`sync: false` keeps them out of git). Click
+   into `GROQ_API_KEY`, paste your real key from
+   [console.groq.com](https://console.groq.com) (free, no card), and Save.
+   *(Only fill in `ANTHROPIC_API_KEY` too if you set `MODEL_PROVIDER` to
+   `anthropic` instead.)*
 4. This triggers a redeploy automatically. Watch the **Logs** tab — you're
    looking for a line like `Uvicorn running on http://0.0.0.0:10000` and
    `Application startup complete`.

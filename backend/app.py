@@ -38,7 +38,6 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Header, WebSocket,
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from anthropic import Anthropic
 
 app = FastAPI(title="Smart Classroom Assistant API")
 
@@ -49,10 +48,120 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = Anthropic()  # reads ANTHROPIC_API_KEY from the environment
-MODEL = "claude-sonnet-5"
-
 # ---------------------------------------------------------------
+# AI provider — Anthropic (Claude) or Groq (free, OpenAI-compatible).
+# Switch with one environment variable, no code changes needed:
+#   export MODEL_PROVIDER=groq        (free tier, no card, 30 req/min)
+#   export MODEL_PROVIDER=anthropic   (paid after the $5 trial credit)
+# Defaults to groq so this runs free out of the box.
+#
+# Groq's hosted model lineup changes more often than Anthropic's, and
+# they've deprecated several models in 2026 (old Llama 3.x chat models,
+# llama-4-scout for vision). GROQ_TEXT_MODEL below is Groq's current
+# recommended flagship as of this writing. If it ever 404s, check
+# https://console.groq.com/docs/models and update the env var below —
+# no code change needed there either.
+# ---------------------------------------------------------------
+MODEL_PROVIDER = os.environ.get("MODEL_PROVIDER", "groq").lower()
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
+GROQ_TEXT_MODEL = os.environ.get("GROQ_TEXT_MODEL", "openai/gpt-oss-120b")
+# Groq's vision-capable models are explicitly labeled "preview" and change
+# frequently — this is the current one as of writing. OCR falls back to a
+# clear error (not a crash) if this model has been retired since.
+GROQ_VISION_MODEL = os.environ.get("GROQ_VISION_MODEL", "qwen/qwen3.6-27b")
+
+_anthropic_client = None
+_groq_client = None
+
+
+def get_anthropic_client():
+    global _anthropic_client
+    if _anthropic_client is None:
+        from anthropic import Anthropic
+        _anthropic_client = Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+    return _anthropic_client
+
+
+def get_groq_client():
+    global _groq_client
+    if _groq_client is None:
+        from groq import Groq
+        _groq_client = Groq()  # reads GROQ_API_KEY from the environment
+    return _groq_client
+
+
+def call_llm(system: str, user_message: str, max_tokens: int = 500) -> str:
+    """
+    One function every text-generation endpoint calls, regardless of
+    provider. Anthropic keeps system prompts separate from the message
+    list; Groq (OpenAI-shaped) puts the system prompt inside the messages
+    array instead — that's the one real structural difference between them.
+    """
+    if MODEL_PROVIDER == "groq":
+        client = get_groq_client()
+        response = client.chat.completions.create(
+            model=GROQ_TEXT_MODEL,
+            max_tokens=max_tokens,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_message},
+            ],
+        )
+        return response.choices[0].message.content
+    else:
+        client = get_anthropic_client()
+        response = client.messages.create(
+            model=ANTHROPIC_MODEL,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        return "".join(b.text for b in response.content if b.type == "text")
+
+
+def call_llm_vision(system: str, user_message: str, image_b64: str, media_type: str, max_tokens: int = 900) -> str:
+    """Same idea as call_llm, but with an image attached — used only by OCR."""
+    if MODEL_PROVIDER == "groq":
+        client = get_groq_client()
+        try:
+            response = client.chat.completions.create(
+                model=GROQ_VISION_MODEL,
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": [
+                        {"type": "text", "text": user_message},
+                        {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{image_b64}"}},
+                    ]},
+                ],
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    "Groq's vision model may have changed or been retired since this was built "
+                    f"(current model: {GROQ_VISION_MODEL}). Check https://console.groq.com/docs/models "
+                    f"and update GROQ_VISION_MODEL. Original error: {e}"
+                ),
+            )
+    else:
+        client = get_anthropic_client()
+        response = client.messages.create(
+            model=ANTHROPIC_MODEL,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
+                    {"type": "text", "text": user_message},
+                ],
+            }],
+        )
+        return "".join(b.text for b in response.content if b.type == "text")
+
+
 # Storage
 # ---------------------------------------------------------------
 DB_PATH = os.path.join(os.path.dirname(__file__), "app.db")
@@ -418,18 +527,16 @@ def stop_class(session_id: int, authorization: Optional[str] = Header(None)):
     ai_notes = "No transcript was captured for this class."
     if transcript.strip():
         try:
-            response = client.messages.create(
-                model=MODEL,
-                max_tokens=700,
+            ai_notes = call_llm(
                 system=(
                     "You are analyzing a full classroom lecture transcript after class has ended. "
                     "Produce a well-organized 'smart summary' with: (1) the main topics covered, "
                     "as a short bullet list, (2) any parts that seem likely to confuse students, "
                     "(3) 2-3 suggested review questions. Be concise and use plain language."
                 ),
-                messages=[{"role": "user", "content": transcript}],
+                user_message=transcript,
+                max_tokens=700,
             )
-            ai_notes = "".join(b.text for b in response.content if b.type == "text")
         except Exception as e:
             ai_notes = f"(AI summary failed: {e})"
 
@@ -605,9 +712,7 @@ def generate_flashcards(req: FlashcardsRequest):
     if not req.transcript.strip():
         return {"flashcards": []}
     try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=600,
+        text = call_llm(
             system=(
                 "Create 5-8 revision flashcards from this lecture transcript. "
                 "Respond with ONLY a JSON array, no other text, no markdown fences. "
@@ -616,9 +721,9 @@ def generate_flashcards(req: FlashcardsRequest):
                 "Keep answers under 30 words each."
                 + language_instruction(req.language)
             ),
-            messages=[{"role": "user", "content": req.transcript}],
+            user_message=req.transcript,
+            max_tokens=600,
         )
-        text = "".join(b.text for b in response.content if b.type == "text")
         text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         cards = json.loads(text)
         return {"flashcards": cards}
@@ -639,9 +744,7 @@ def generate_mindmap(req: MindMapRequest):
     if not req.transcript.strip():
         return {"mindmap": None}
     try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=500,
+        text = call_llm(
             system=(
                 "Turn this lecture transcript into a mind map structure. "
                 "Respond with ONLY JSON, no other text, no markdown fences: "
@@ -650,9 +753,9 @@ def generate_mindmap(req: MindMapRequest):
                 "]}. Use 3-5 branches, 2-4 points each, keep every string short."
                 + language_instruction(req.language)
             ),
-            messages=[{"role": "user", "content": req.transcript}],
+            user_message=req.transcript,
+            max_tokens=500,
         )
-        text = "".join(b.text for b in response.content if b.type == "text")
         text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         mindmap = json.loads(text)
         return {"mindmap": mindmap}
@@ -676,9 +779,7 @@ async def ocr_read(file: UploadFile = File(...), disabilities: str = "", languag
         parsed_disabilities = []
 
     try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=900,
+        text = call_llm_vision(
             system=(
                 "Read the text visible in this photo of a page exactly as written. "
                 "Then, on a new line starting with 'SUMMARY:', give a 1-2 sentence plain-language "
@@ -686,16 +787,14 @@ async def ocr_read(file: UploadFile = File(...), disabilities: str = "", languag
                 + accessibility_instructions(parsed_disabilities)
                 + language_instruction(language)
             ),
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
-                    {"type": "text", "text": "Please read this page for a student who can't easily read it themselves."},
-                ],
-            }],
+            user_message="Please read this page for a student who can't easily read it themselves.",
+            image_b64=b64,
+            media_type=media_type,
+            max_tokens=900,
         )
-        text = "".join(b.text for b in response.content if b.type == "text")
         return {"text": text}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -765,9 +864,7 @@ def explain(req: ExplainRequest):
     recent_chunk = req.transcript[-900:]
 
     try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=350,
+        explanation = call_llm(
             system=(
                 "A student didn't understand what the teacher just said in class. "
                 "Re-explain ONLY the most recent idea below in the simplest possible way: "
@@ -780,9 +877,9 @@ def explain(req: ExplainRequest):
                 + recent_chunk
                 + "\n--- END ---"
             ),
-            messages=[{"role": "user", "content": "I didn't understand that. Can you explain it more simply?"}],
+            user_message="I didn't understand that. Can you explain it more simply?",
+            max_tokens=350,
         )
-        explanation = "".join(b.text for b in response.content if b.type == "text")
         return {"explanation": explanation}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -799,9 +896,7 @@ def summarize(req: SummarizeRequest):
         return {"summary": "No lecture audio captured yet."}
 
     try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=400,
+        summary = call_llm(
             system=(
                 "You are a note-taking assistant for a live classroom. "
                 "Turn the raw lecture transcript into concise bullet-point notes. "
@@ -810,9 +905,9 @@ def summarize(req: SummarizeRequest):
                 + accessibility_instructions(req.disabilities)
                 + language_instruction(req.language)
             ),
-            messages=[{"role": "user", "content": req.transcript}],
+            user_message=req.transcript,
+            max_tokens=400,
         )
-        summary = "".join(b.text for b in response.content if b.type == "text")
         return {"summary": summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -824,9 +919,7 @@ def ask(req: AskRequest):
         return {"answer": "The lecture hasn't started yet, so there's nothing to answer from."}
 
     try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=500,
+        answer = call_llm(
             system=(
                 "You are a classroom doubt-solving assistant. Answer the student's "
                 "question using ONLY the lecture transcript provided below as context. "
@@ -838,9 +931,9 @@ def ask(req: AskRequest):
                 + "\n\n"
                 f"--- LECTURE TRANSCRIPT SO FAR ---\n{req.transcript}\n--- END TRANSCRIPT ---"
             ),
-            messages=[{"role": "user", "content": req.question}],
+            user_message=req.question,
+            max_tokens=500,
         )
-        answer = "".join(b.text for b in response.content if b.type == "text")
         return {"answer": answer}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

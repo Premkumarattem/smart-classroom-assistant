@@ -7,8 +7,12 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: MODEL_PROVIDER
+        value: groq   # free, no card — set to "anthropic" instead if you'd rather pay for Claude quality
+      - key: GROQ_API_KEY
+        sync: false   # paste in the Render dashboard, not in git — get one free at console.groq.com
       - key: ANTHROPIC_API_KEY
-        sync: false   # you'll paste this in manually in the Render dashboard, not in git
+        sync: false   # only needed if you switch MODEL_PROVIDER to "anthropic"
     autoDeploy: true
 
 # NOTE on persistent storage:
