@@ -7,6 +7,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11   # pinned — Render's newer default (3.14.x) lacks prebuilt wheels for pydantic-core
       - key: MODEL_PROVIDER
         value: groq   # free, no card — set to "anthropic" instead if you'd rather pay for Claude quality
       - key: GROQ_API_KEY

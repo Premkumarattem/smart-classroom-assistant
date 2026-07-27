@@ -449,3 +449,11 @@ files" isn't actually a risk here; there was nothing to fix.
   (`apt install ffmpeg` / `brew install ffmpeg` / winget) and it'll convert
   automatically next time — or just play the `.webm`, which works fine in
   any modern browser regardless.
+- **Render build fails with `pydantic-core` / `metadata-generation-failed`:**
+  this means Render used a newer Python version than `pydantic-core` has
+  prebuilt wheels for (it's a Rust-based package, and Render's default
+  Python creeps forward over time). This repo already pins
+  `PYTHON_VERSION=3.11.11` in `render.yaml` and a `.python-version` file
+  to prevent this — if you still hit it, double check both of those got
+  pushed to GitHub, and that Render's Environment tab actually shows
+  `PYTHON_VERSION` set to `3.11.11` (not blank).
