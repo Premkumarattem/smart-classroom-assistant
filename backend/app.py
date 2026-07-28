@@ -384,37 +384,91 @@ def save_settings(req: SettingsRequest, authorization: Optional[str] = Header(No
 # replacing polling for anyone connected to a specific class session.
 # Discovery of "is a class live right now" still uses a REST GET,
 # since a student doesn't have a session_id to connect to yet.
+#
+# This same channel also carries WebRTC *signaling* for live video —
+# the offer/answer/ICE-candidate handshake browsers need before they can
+# open a direct peer-to-peer video connection to each other. The actual
+# video/audio never touches this server; only the small setup messages
+# do. That's why this stays lightweight even with video involved.
 # ---------------------------------------------------------------
 class ConnectionManager:
     def __init__(self):
+        # session_id -> list of {"ws", "role", "client_id", "name"}
         self.active: dict = {}
 
-    async def connect(self, session_id: int, ws: WebSocket):
+    async def connect(self, session_id: int, ws: WebSocket, role: str, client_id: str, name: str):
         await ws.accept()
-        self.active.setdefault(session_id, []).append(ws)
+        self.active.setdefault(session_id, []).append(
+            {"ws": ws, "role": role, "client_id": client_id, "name": name}
+        )
 
     def disconnect(self, session_id: int, ws: WebSocket):
         conns = self.active.get(session_id, [])
-        if ws in conns:
-            conns.remove(ws)
+        self.active[session_id] = [c for c in conns if c["ws"] is not ws]
 
     async def broadcast(self, session_id: int, message: dict):
-        for ws in list(self.active.get(session_id, [])):
+        for c in list(self.active.get(session_id, [])):
             try:
-                await ws.send_json(message)
+                await c["ws"].send_json(message)
             except Exception:
-                self.disconnect(session_id, ws)
+                self.disconnect(session_id, c["ws"])
+
+    async def send_to_role(self, session_id: int, role: str, message: dict):
+        """Used for signaling aimed at 'whichever connection is the teacher'."""
+        for c in list(self.active.get(session_id, [])):
+            if c["role"] == role:
+                try:
+                    await c["ws"].send_json(message)
+                except Exception:
+                    self.disconnect(session_id, c["ws"])
+
+    async def send_to_client(self, session_id: int, client_id: str, message: dict):
+        """Used for signaling aimed at one specific student (by their client_id)."""
+        for c in list(self.active.get(session_id, [])):
+            if c["client_id"] == client_id:
+                try:
+                    await c["ws"].send_json(message)
+                except Exception:
+                    self.disconnect(session_id, c["ws"])
 
 
 manager = ConnectionManager()
 
+# Message types relayed as WebRTC signaling — routed to a specific peer,
+# never broadcast to everyone (unlike transcript/hand_raise/chat above).
+SIGNALING_TYPES = {"video_join", "webrtc_offer", "webrtc_answer", "webrtc_ice"}
+
 
 @app.websocket("/ws/class/{session_id}")
-async def class_websocket(websocket: WebSocket, session_id: int):
-    await manager.connect(session_id, websocket)
+async def class_websocket(
+    websocket: WebSocket,
+    session_id: int,
+    role: str = "student",
+    client_id: str = "",
+    name: str = "",
+):
+    await manager.connect(session_id, websocket, role, client_id, name)
     try:
         while True:
-            await websocket.receive_text()  # clients don't send anything meaningful; just detects disconnect
+            raw = await websocket.receive_text()
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if msg.get("type") not in SIGNALING_TYPES:
+                continue  # this connection doesn't send anything else meaningful
+
+            if msg.get("type") == "video_join":
+                # A student is ready to receive video — tell the teacher who,
+                # so the teacher can open a peer connection aimed at them.
+                await manager.send_to_role(session_id, "teacher", msg)
+            else:
+                # offer/answer/ICE — relay to whichever side it's addressed to.
+                target = msg.get("target")
+                if target == "teacher":
+                    await manager.send_to_role(session_id, "teacher", msg)
+                elif target:
+                    await manager.send_to_client(session_id, target, msg)
     except WebSocketDisconnect:
         manager.disconnect(session_id, websocket)
 

@@ -1396,3 +1396,91 @@ select:focus-visible,
 main:focus {
   outline: none;
 }
+
+/* =================================================================
+   Live video (student side, WebRTC)
+   ================================================================= */
+.live-video-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #0F221D;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  margin-bottom: 14px;
+}
+
+#liveVideoStudent {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.live-video-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 16px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--chalk-dim);
+  background: rgba(15, 34, 29, 0.9);
+}
+
+/* =================================================================
+   Past recordings (student side)
+   ================================================================= */
+.past-recordings {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--rule);
+}
+
+.recordings-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.recordings-list li {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+}
+
+.recordings-list li.placeholder {
+  font-style: italic;
+  color: var(--chalk-dim);
+  border-style: dashed;
+}
+
+.recordings-list .rec-title {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  color: var(--amber);
+  margin-bottom: 2px;
+}
+
+.recordings-list .rec-meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--chalk-dim);
+  margin-bottom: 6px;
+}
+
+.recordings-list video {
+  width: 100%;
+  border-radius: 6px;
+  margin-top: 4px;
+}

@@ -181,6 +181,11 @@
       <div class="panel-head"><span class="panel-number">I</span><h2>Live Captions &amp; Notes</h2></div>
       <p class="hint" id="noActiveClassMsg">No class is live right now for your college. This checks every few seconds.</p>
 
+      <div class="live-video-wrap">
+        <video id="liveVideoStudent" autoplay playsinline></video>
+        <p class="live-video-status hidden" id="liveVideoStatus">No class is live right now.</p>
+      </div>
+
       <div class="transcript-box" id="transcriptBoxStudent" aria-live="polite" role="log" aria-label="Live lecture captions">
         <p class="placeholder">Live captions will appear here once a class starts…</p>
       </div>
@@ -211,6 +216,16 @@
         <div id="notesContent" class="notes-content">
           <p class="placeholder">Bullet notes generate automatically as the lecture progresses.</p>
         </div>
+      </div>
+
+      <div class="past-recordings">
+        <div class="notes-head">
+          <span>past class recordings</span>
+          <button id="refreshRecordingsBtn" class="btn btn-ghost btn-small">refresh</button>
+        </div>
+        <ul id="pastRecordingsList" class="recordings-list">
+          <li class="placeholder">Recordings appear here once a class from your college has ended.</li>
+        </ul>
       </div>
     </section>
 

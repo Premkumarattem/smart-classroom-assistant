@@ -372,6 +372,42 @@ that's a real architectural reason, not just unfamiliarity.
    search by subject/teacher/date — find the class you just ran, and click
    **🎥 Watch recording**.
 
+## Live video + past recordings on the student side
+
+Two things students didn't have before, now added:
+
+**Live video, teacher → student, via WebRTC.** When a teacher starts a
+class, students connect directly to the teacher's camera stream — real
+peer-to-peer video, not a slideshow of snapshots. The existing per-class
+WebSocket now does double duty as the WebRTC *signaling* channel (the
+offer/answer/ICE-candidate handshake two browsers need before they can
+open a direct connection) — no separate signaling server was added. The
+video/audio itself never touches the backend at all once connected.
+
+**Two honest limitations, stated plainly:**
+- **No TURN server.** A public STUN server (Google's) helps browsers find
+  each other through most home/mobile networks, but some locked-down
+  corporate or campus WiFi blocks direct peer connections entirely. On
+  those networks, live video may fail to connect — the app detects this
+  after 8 seconds and tells the student plainly ("Live video unavailable
+  — captions are still working normally") rather than leaving a spinner
+  forever. **Test this on the actual venue WiFi before presenting**, not
+  just at home.
+- **Doesn't scale past a handful of viewers.** The teacher opens one
+  direct connection per student (a "mesh"). That's fine for a classroom
+  demo with a few students, but wouldn't hold up for hundreds — a real
+  deployment at that scale needs a proper media server (an "SFU" like
+  LiveKit or mediasoup) so the teacher only has to send video once. This
+  is a real, known architecture boundary, not an oversight.
+
+**Past recordings, viewable by students.** Previously, a class recording
+was only visible to the teacher (right after stop) and the college admin
+(via search). Now the student dashboard has its own "past class
+recordings" list — every ended class from their college, with the video
+playable right there. This reuses the exact same `GET /api/classes`
+endpoint the college dashboard already used; no backend change was needed
+for this part, only a new frontend panel.
+
 ## What got upgraded this round — real-time, security, and personalization
 
 - **WebSockets, not just polling** — `/ws/class/{id}` pushes transcript
@@ -435,6 +471,13 @@ files" isn't actually a risk here; there was nothing to fix.
   text match).
 - **No live captions:** Web Speech API is Chrome-only and needs mic
   permission granted on the *teacher's* device, not the student's.
+- **Live video never appears for a student:** first check the teacher
+  granted *camera* permission (not just mic) when starting the class —
+  without it, captions still work but there's no video to send. If camera
+  permission was granted and it still doesn't connect within ~8 seconds,
+  the network is likely blocking direct peer connections (see the "Live
+  video + past recordings" section above) — captions and everything else
+  keep working regardless.
 - **Recording upload fails:** it's non-blocking — the class still stops
   and generates notes even if the video upload errors out.
 - **"401 Unauthorized" on some action:** the browser's session token is

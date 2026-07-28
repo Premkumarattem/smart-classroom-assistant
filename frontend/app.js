@@ -478,7 +478,7 @@ document.getElementById("startClassBtn").addEventListener("click", async () => {
   teacherFullTranscript = "";
 
   startTeacherSpeechRecognition();
-  startTeacherRecording();
+  await startTeacherRecording();  // must finish before students can connect and request video
   connectTeacherWebSocket(teacherSessionId);
   handRaisePoll = setInterval(pollHandRaises, 8000);   // safety net — WS handles instant updates
   teacherChatPoll = setInterval(pollTeacherChat, 8000); // safety net — WS handles instant updates
@@ -486,19 +486,76 @@ document.getElementById("startClassBtn").addEventListener("click", async () => {
   document.getElementById("teacherChatThread").innerHTML = '<p class="placeholder">Messages from students who can\'t speak will appear here.</p>';
 });
 
+// Public STUN server so browsers can find a direct path to each other
+// through NAT. No TURN relay server is configured — on a network that
+// blocks direct peer connections (some locked-down corporate/campus
+// WiFi), live video may fail to connect while everything else in the
+// app keeps working normally. That's a real, honest limitation, not a
+// bug — a production deployment would add a TURN server for this.
+const RTC_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+let teacherClientId = null;
+let teacherPeerConnections = {}; // studentClientId -> RTCPeerConnection
+
 let teacherWS = null;
 function connectTeacherWebSocket(sessionId) {
   if (teacherWS) teacherWS.close();
-  teacherWS = new WebSocket(`${WS_BASE}/ws/class/${sessionId}`);
-  teacherWS.onmessage = (event) => {
+  teacherClientId = "teacher-" + sessionId;
+  const url = `${WS_BASE}/ws/class/${sessionId}?role=teacher&client_id=${encodeURIComponent(teacherClientId)}&name=${encodeURIComponent(currentUser.name)}`;
+  teacherWS = new WebSocket(url);
+  teacherWS.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === "hand_raise") pollHandRaises();
     if (msg.type === "chat") pollTeacherChat();
+    if (msg.type === "video_join") await startVideoForStudent(msg.from);
+    if (msg.type === "webrtc_answer") await handleStudentAnswer(msg);
+    if (msg.type === "webrtc_ice" && msg.candidate) await handleStudentIce(msg);
   };
   teacherWS.onerror = () => console.warn("Teacher WebSocket error — falling back to polling only.");
 }
+
+async function startVideoForStudent(studentClientId) {
+  if (!teacherCamStream) return; // camera unavailable — captions still work fine without it
+  if (teacherPeerConnections[studentClientId]) return; // already connected to this student
+
+  const pc = new RTCPeerConnection(RTC_CONFIG);
+  teacherPeerConnections[studentClientId] = pc;
+  teacherCamStream.getTracks().forEach((track) => pc.addTrack(track, teacherCamStream));
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      teacherWS?.send(JSON.stringify({
+        type: "webrtc_ice", target: studentClientId, from: teacherClientId, candidate: e.candidate,
+      }));
+    }
+  };
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  teacherWS?.send(JSON.stringify({
+    type: "webrtc_offer", target: studentClientId, from: teacherClientId, sdp: pc.localDescription,
+  }));
+}
+
+async function handleStudentAnswer(msg) {
+  const pc = teacherPeerConnections[msg.from];
+  if (pc) await pc.setRemoteDescription(msg.sdp);
+}
+
+async function handleStudentIce(msg) {
+  const pc = teacherPeerConnections[msg.from];
+  if (pc) {
+    try { await pc.addIceCandidate(msg.candidate); } catch (e) { /* candidate may arrive late — safe to ignore */ }
+  }
+}
+
+function closeAllTeacherPeerConnections() {
+  Object.values(teacherPeerConnections).forEach((pc) => pc.close());
+  teacherPeerConnections = {};
+}
 function closeTeacherWebSocket() {
   if (teacherWS) { teacherWS.close(); teacherWS = null; }
+  closeAllTeacherPeerConnections();
 }
 
 function appendTeacherTranscriptLine(text) {
@@ -717,7 +774,38 @@ let lastRenderedTranscriptLen = 0;
 function startStudentPolling() {
   pollForActiveClass();
   studentClassPoll = setInterval(pollForActiveClass, 4000);
+  loadPastRecordings();
 }
+
+async function loadPastRecordings() {
+  const list = document.getElementById("pastRecordingsList");
+  if (!list || !currentUser) return;
+  try {
+    const params = new URLSearchParams({ status: "ended" });
+    if (currentUser.college_name) params.set("college_name", currentUser.college_name);
+    const res = await fetch(`${API_BASE}/api/classes?${params.toString()}`);
+    const data = await res.json();
+    const withRecordings = data.classes.filter((c) => c.recording_path);
+    if (!withRecordings.length) {
+      list.innerHTML = '<li class="placeholder">Recordings appear here once a class from your college has ended.</li>';
+      return;
+    }
+    list.innerHTML = "";
+    withRecordings.forEach((c) => {
+      const li = document.createElement("li");
+      const date = c.session_date || "";
+      li.innerHTML = `
+        <div class="rec-title">${c.subject}</div>
+        <div class="rec-meta">${c.teacher_name} · ${date}</div>
+        <video controls preload="none" src="${API_BASE}${c.recording_path}"></video>
+      `;
+      list.appendChild(li);
+    });
+  } catch (e) {
+    list.innerHTML = `<li class="placeholder">Couldn't reach the backend at ${API_BASE}.</li>`;
+  }
+}
+document.getElementById("refreshRecordingsBtn")?.addEventListener("click", loadPastRecordings);
 
 async function pollForActiveClass() {
   try {
@@ -747,23 +835,96 @@ async function pollForActiveClass() {
       clearInterval(studentChatPoll);
       closeStudentWebSocket();
       document.getElementById("noActiveClassMsg").textContent = "No class is live right now for your college. This checks every few seconds.";
+      loadPastRecordings(); // the class that just ended should show up here now
     }
   } catch (e) { /* silent — keep trying */ }
 }
 
 let studentWS = null;
+let studentClientId = null;
+let studentPeerConnection = null;
+let studentVideoTimeout = null;
+
 function connectStudentWebSocket(sessionId) {
   if (studentWS) studentWS.close();
-  studentWS = new WebSocket(`${WS_BASE}/ws/class/${sessionId}`);
-  studentWS.onmessage = (event) => {
+  studentClientId = studentClientId || `student-${currentUser.id}-${Date.now()}`;
+  const url = `${WS_BASE}/ws/class/${sessionId}?role=student&client_id=${encodeURIComponent(studentClientId)}&name=${encodeURIComponent(currentUser.name)}`;
+  studentWS = new WebSocket(url);
+
+  studentWS.onopen = () => {
+    setLiveVideoStatus("Connecting to live video…");
+    studentWS.send(JSON.stringify({ type: "video_join", from: studentClientId, name: currentUser.name }));
+    // If no video track arrives in a reasonable window, say so plainly
+    // instead of leaving a spinner forever — captions keep working regardless.
+    clearTimeout(studentVideoTimeout);
+    studentVideoTimeout = setTimeout(() => {
+      if (!studentPeerConnection || studentPeerConnection.connectionState !== "connected") {
+        setLiveVideoStatus("Live video unavailable right now — captions are still working normally.");
+      }
+    }, 8000);
+  };
+
+  studentWS.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === "transcript") appendLiveTranscriptChunk(msg.chunk);
     if (msg.type === "chat") pollStudentChat();
+    if (msg.type === "webrtc_offer") await handleTeacherOffer(msg);
+    if (msg.type === "webrtc_ice" && msg.candidate) await handleTeacherIce(msg);
   };
   studentWS.onerror = () => console.warn("Student WebSocket error — falling back to polling only.");
 }
+
+async function handleTeacherOffer(msg) {
+  if (studentPeerConnection) studentPeerConnection.close();
+  const pc = new RTCPeerConnection(RTC_CONFIG);
+  studentPeerConnection = pc;
+
+  pc.ontrack = (event) => {
+    const video = document.getElementById("liveVideoStudent");
+    video.srcObject = event.streams[0];
+    setLiveVideoStatus(null); // clear any status message — video is here
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+      setLiveVideoStatus("Live video connection lost — captions are still working normally.");
+    }
+  };
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      studentWS?.send(JSON.stringify({
+        type: "webrtc_ice", target: "teacher", from: studentClientId, candidate: e.candidate,
+      }));
+    }
+  };
+
+  await pc.setRemoteDescription(msg.sdp);
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  studentWS?.send(JSON.stringify({
+    type: "webrtc_answer", target: "teacher", from: studentClientId, sdp: pc.localDescription,
+  }));
+}
+
+async function handleTeacherIce(msg) {
+  if (studentPeerConnection) {
+    try { await studentPeerConnection.addIceCandidate(msg.candidate); } catch (e) { /* late candidate — safe to ignore */ }
+  }
+}
+
+function setLiveVideoStatus(text) {
+  const el = document.getElementById("liveVideoStatus");
+  if (!el) return;
+  if (text) { el.textContent = text; el.classList.remove("hidden"); }
+  else { el.classList.add("hidden"); }
+}
+
 function closeStudentWebSocket() {
   if (studentWS) { studentWS.close(); studentWS = null; }
+  if (studentPeerConnection) { studentPeerConnection.close(); studentPeerConnection = null; }
+  clearTimeout(studentVideoTimeout);
+  const video = document.getElementById("liveVideoStudent");
+  if (video) video.srcObject = null;
+  setLiveVideoStatus("No class is live right now.");
 }
 
 function appendLiveTranscriptChunk(chunk) {
