@@ -178,19 +178,68 @@ VALID_LANGUAGES = {"english", "telugu", "hindi"}
 
 LANGUAGE_NAMES = {"english": "English", "telugu": "Telugu", "hindi": "Hindi"}
 
+# ---------------------------------------------------------------
+# Database backend — SQLite by default (zero setup, great for local dev
+# and small demos), or PostgreSQL if DATABASE_URL is set (real concurrent
+# writes, survives redeploys on platforms with managed Postgres).
+#
+# The rest of this file writes ordinary "?"-placeholder SQL exactly the
+# way it always has — DBConnection below is the only place that knows
+# the two backends exist. That's deliberate: it means adding Postgres
+# didn't require rewriting every query in this file, just this one layer.
+# ---------------------------------------------------------------
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+USE_POSTGRES = bool(DATABASE_URL)
+
+if USE_POSTGRES:
+    import psycopg
+    from psycopg.rows import dict_row
+
+# SQLite auto-increments with "INTEGER PRIMARY KEY AUTOINCREMENT";
+# Postgres's equivalent is "SERIAL PRIMARY KEY". Every CREATE TABLE below
+# uses this instead of hardcoding one or the other.
+PK_TYPE = "SERIAL PRIMARY KEY" if USE_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
+
+
+class DBConnection:
+    """
+    Wraps either a sqlite3 connection or a psycopg (Postgres) connection
+    behind the same interface: .execute(query, params).fetchone()/.fetchall(),
+    .commit(), .close(). Query text is always written with "?" placeholders
+    (SQLite style) regardless of backend — this class translates to "%s"
+    for Postgres automatically, since psycopg doesn't accept "?".
+    """
+    def __init__(self, raw_conn):
+        self._conn = raw_conn
+
+    def execute(self, query, params=()):
+        if USE_POSTGRES:
+            cur = self._conn.cursor(row_factory=dict_row)
+            cur.execute(query.replace("?", "%s"), params)
+            return cur
+        return self._conn.execute(query, params)
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
 
 def get_db():
+    if USE_POSTGRES:
+        return DBConnection(psycopg.connect(DATABASE_URL))
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    return conn
+    return DBConnection(conn)
 
 
 def init_db():
     conn = get_db()
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {PK_TYPE},
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             salt TEXT NOT NULL,
@@ -200,14 +249,14 @@ def init_db():
             college_name TEXT NOT NULL DEFAULT '',
             language TEXT NOT NULL DEFAULT 'english',
             token TEXT,
-            settings TEXT NOT NULL DEFAULT '{}'
+            settings TEXT NOT NULL DEFAULT '{{}}'
         )
         """
     )
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS class_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {PK_TYPE},
             teacher_id INTEGER,
             teacher_name TEXT NOT NULL,
             college_name TEXT NOT NULL DEFAULT '',
@@ -223,9 +272,9 @@ def init_db():
         """
     )
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS hand_raises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {PK_TYPE},
             session_id INTEGER NOT NULL,
             student_name TEXT NOT NULL,
             raised_at TEXT NOT NULL,
@@ -235,14 +284,37 @@ def init_db():
         """
     )
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS chat_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {PK_TYPE},
             session_id INTEGER NOT NULL,
             sender_name TEXT NOT NULL,
-            sender_role TEXT NOT NULL,  -- 'student' or 'teacher'
+            sender_role TEXT NOT NULL,
             message TEXT NOT NULL,
             sent_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS revision_notes (
+            id {PK_TYPE},
+            student_id INTEGER NOT NULL,
+            session_id INTEGER,
+            subject TEXT NOT NULL DEFAULT '',
+            notes_text TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS ai_usage_events (
+            id {PK_TYPE},
+            session_id INTEGER,
+            college_name TEXT NOT NULL DEFAULT '',
+            event_type TEXT NOT NULL,
+            created_at TEXT NOT NULL
         )
         """
     )
@@ -255,6 +327,32 @@ init_db()
 
 def now_iso() -> str:
     return datetime.now().isoformat()
+
+
+def log_ai_usage(event_type: str, session_id: Optional[int]):
+    """
+    Fire-and-forget usage logging for the teacher analytics dashboard.
+    Never raises — a logging failure should never break the actual AI
+    feature the student is using.
+    """
+    try:
+        college_name = ""
+        if session_id:
+            conn = get_db()
+            row = conn.execute(
+                "SELECT college_name FROM class_sessions WHERE id = ?", (session_id,)
+            ).fetchone()
+            conn.close()
+            college_name = row["college_name"] if row else ""
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO ai_usage_events (session_id, college_name, event_type, created_at) VALUES (?, ?, ?, ?)",
+            (session_id, college_name, event_type, now_iso()),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 def today_str() -> str:
@@ -297,7 +395,7 @@ def user_to_dict(row) -> dict:
     }
 
 
-def require_user(authorization: Optional[str]) -> sqlite3.Row:
+def require_user(authorization: Optional[str]):
     """
     Very lightweight token check: the client sends 'Bearer <token>' in the
     Authorization header (issued at register/login). This stops a random
@@ -489,14 +587,18 @@ def start_class(req: StartClassRequest, authorization: Optional[str] = Header(No
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teacher accounts can start a class.")
     conn = get_db()
-    conn.execute(
-        """INSERT INTO class_sessions
+    insert_sql = """INSERT INTO class_sessions
            (teacher_id, teacher_name, college_name, subject, session_date, start_time, status)
-           VALUES (?, ?, ?, ?, ?, ?, 'active')""",
-        (req.teacher_id, req.teacher_name, req.college_name, req.subject, today_str(), now_iso()),
-    )
+           VALUES (?, ?, ?, ?, ?, ?, 'active')"""
+    params = (req.teacher_id, req.teacher_name, req.college_name, req.subject, today_str(), now_iso())
+    if USE_POSTGRES:
+        # Postgres gives back the new row's id directly via RETURNING —
+        # no separate lookup needed (and last_insert_rowid() doesn't exist there).
+        session_id = conn.execute(insert_sql + " RETURNING id", params).fetchone()["id"]
+    else:
+        conn.execute(insert_sql, params)
+        session_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
     conn.commit()
-    session_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
     conn.close()
     return {"session_id": session_id, "date": today_str()}
 
@@ -754,11 +856,100 @@ def accessibility_stats(college_name: str):
 
 
 # ---------------------------------------------------------------
+# Teacher Analytics Dashboard — classroom engagement at a glance.
+# Reuses the accessibility breakdown above plus counts of how often
+# each AI feature actually gets used. Aggregate only — no per-student
+# tracking is exposed here, same privacy stance as accessibility-stats.
+# ---------------------------------------------------------------
+@app.get("/api/analytics")
+def analytics(college_name: str):
+    conn = get_db()
+
+    student_rows = conn.execute(
+        "SELECT disabilities FROM users WHERE role = 'student' AND college_name = ?",
+        (college_name,),
+    ).fetchall()
+    total_students = len(student_rows)
+    a11y_counts = {k: 0 for k in VALID_DISABILITIES if k != "none"}
+    for row in student_rows:
+        for d in json.loads(row["disabilities"]):
+            if d in a11y_counts:
+                a11y_counts[d] += 1
+
+    usage_rows = conn.execute(
+        "SELECT event_type, COUNT(*) AS n FROM ai_usage_events WHERE college_name = ? GROUP BY event_type",
+        (college_name,),
+    ).fetchall()
+    usage_counts = {r["event_type"]: r["n"] for r in usage_rows}
+
+    class_counts = conn.execute(
+        "SELECT COUNT(*) AS total, SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) AS active "
+        "FROM class_sessions WHERE college_name = ?",
+        (college_name,),
+    ).fetchone()
+
+    conn.close()
+    return {
+        "total_students": total_students,
+        "accessibility_counts": a11y_counts,
+        "usage_counts": usage_counts,
+        "total_classes": class_counts["total"] or 0,
+        "active_classes": class_counts["active"] or 0,
+    }
+
+
+# ---------------------------------------------------------------
+# Personalized Revision Notes — a student can save the current AI notes
+# for a class and come back to them later, tied to their own account.
+# ---------------------------------------------------------------
+class RevisionNoteRequest(BaseModel):
+    session_id: Optional[int] = None
+    subject: str = ""
+    notes_text: str
+
+
+@app.post("/api/revision-notes")
+def save_revision_note(req: RevisionNoteRequest, authorization: Optional[str] = Header(None)):
+    user = require_user(authorization)
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO revision_notes (student_id, session_id, subject, notes_text, created_at) VALUES (?, ?, ?, ?, ?)",
+        (user["id"], req.session_id, req.subject, req.notes_text, now_iso()),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@app.get("/api/revision-notes")
+def list_revision_notes(authorization: Optional[str] = Header(None)):
+    user = require_user(authorization)
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, subject, notes_text, created_at FROM revision_notes WHERE student_id = ? ORDER BY id DESC",
+        (user["id"],),
+    ).fetchall()
+    conn.close()
+    return {"notes": [dict(r) for r in rows]}
+
+
+@app.delete("/api/revision-notes/{note_id}")
+def delete_revision_note(note_id: int, authorization: Optional[str] = Header(None)):
+    user = require_user(authorization)
+    conn = get_db()
+    conn.execute("DELETE FROM revision_notes WHERE id = ? AND student_id = ?", (note_id, user["id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------
 # AI Flashcard Generator — turns the transcript into revision Q&A cards
 # ---------------------------------------------------------------
 class FlashcardsRequest(BaseModel):
     transcript: str
     language: str = "english"
+    session_id: Optional[int] = None
 
 
 @app.post("/api/flashcards")
@@ -780,7 +971,43 @@ def generate_flashcards(req: FlashcardsRequest):
         )
         text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         cards = json.loads(text)
+        log_ai_usage("flashcards", req.session_id)
         return {"flashcards": cards}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------
+# AI Quiz Generator — 5 multiple-choice questions from the transcript,
+# graded client-side (no separate "submit answers" round trip needed).
+# ---------------------------------------------------------------
+class QuizRequest(BaseModel):
+    transcript: str
+    language: str = "english"
+    session_id: Optional[int] = None
+
+
+@app.post("/api/quiz")
+def generate_quiz(req: QuizRequest):
+    if not req.transcript.strip():
+        return {"quiz": []}
+    try:
+        text = call_llm(
+            system=(
+                "Create a 5-question multiple-choice quiz testing understanding of this lecture "
+                "transcript — not just recall of exact wording. "
+                "Respond with ONLY a JSON array, no other text, no markdown fences. "
+                "Each item: {\"question\": \"...\", \"options\": [\"A\", \"B\", \"C\", \"D\"], "
+                "\"correct_index\": 0-3}. Exactly 4 options per question, exactly one correct."
+                + language_instruction(req.language)
+            ),
+            user_message=req.transcript,
+            max_tokens=800,
+        )
+        text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        quiz = json.loads(text)
+        log_ai_usage("quiz", req.session_id)
+        return {"quiz": quiz}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -791,6 +1018,7 @@ def generate_flashcards(req: FlashcardsRequest):
 class MindMapRequest(BaseModel):
     transcript: str
     language: str = "english"
+    session_id: Optional[int] = None
 
 
 @app.post("/api/mindmap")
@@ -812,6 +1040,7 @@ def generate_mindmap(req: MindMapRequest):
         )
         text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         mindmap = json.loads(text)
+        log_ai_usage("mindmap", req.session_id)
         return {"mindmap": mindmap}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -887,6 +1116,7 @@ class SummarizeRequest(BaseModel):
     transcript: str
     disabilities: List[str] = []
     language: str = "english"
+    session_id: Optional[int] = None
 
 
 class AskRequest(BaseModel):
@@ -894,12 +1124,14 @@ class AskRequest(BaseModel):
     question: str
     disabilities: List[str] = []
     language: str = "english"
+    session_id: Optional[int] = None
 
 
 class ExplainRequest(BaseModel):
     transcript: str
     disabilities: List[str] = []
     language: str = "english"
+    session_id: Optional[int] = None
 
 
 @app.post("/api/explain")
@@ -934,6 +1166,7 @@ def explain(req: ExplainRequest):
             user_message="I didn't understand that. Can you explain it more simply?",
             max_tokens=350,
         )
+        log_ai_usage("explain", req.session_id)
         return {"explanation": explanation}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -962,6 +1195,7 @@ def summarize(req: SummarizeRequest):
             user_message=req.transcript,
             max_tokens=400,
         )
+        log_ai_usage("summarize", req.session_id)
         return {"summary": summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -988,6 +1222,7 @@ def ask(req: AskRequest):
             user_message=req.question,
             max_tokens=500,
         )
+        log_ai_usage("ask", req.session_id)
         return {"answer": answer}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

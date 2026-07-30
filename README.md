@@ -89,10 +89,32 @@ combined, just by selecting more than one checkbox.
 - **🤟 Sign Language Glossary (prototype)** — see the honest note below;
   this is a real, working feature, just scoped honestly.
 - **🏅 Achievement badges** — lightweight, session-based: Curious Mind,
-  Quick Learner, Accessibility Explorer, Consistent Learner.
+  Quick Learner, Accessibility Explorer, Consistent Learner. Now paired
+  with a plain-text activity line ("questions asked: N · explains used: N")
+  so progress isn't only visible as icons.
+- **📝 AI Quiz Generator** — 5 multiple-choice questions generated from the
+  live transcript, graded instantly in the browser with correct answers
+  highlighted — the system doesn't just teach, it checks understanding.
+- **📚 Personalized Revision Notes** — save the current AI notes for a
+  class to your own account with one click; come back anytime and see
+  every class's saved notes in one list.
+- **🔍 Keyword Search in Transcript** — search box above the live captions;
+  matches highlight inline with next/previous navigation, so "find where
+  they said 'recursion'" is one search instead of scrolling.
+- **📊 Teacher Analytics ("Classroom Insights")** — student count, classes
+  held, accessibility-need distribution, and how often each AI feature
+  actually gets used (questions asked, explain-simply uses, notes/
+  flashcards/quizzes generated) — aggregate only, no individual student
+  singled out, same privacy stance as the accessibility snapshot.
 - **Accessibility Dashboard (teacher)** — an aggregate snapshot of how many
   students at their college need vision/hearing/dyslexia/ADHD/motor/speech
-  support. No individual student is singled out.
+  support. No individual student is singled out. *(Now folded into the
+  Classroom Insights panel above, alongside usage analytics.)*
+- **Visual theme** — bold dark with a violet/neon accent throughout the
+  app (buttons, live indicators, and highlights carry a soft neon glow).
+  The accessibility theme presets (Black & White, Yellow & Black, Blue &
+  White) are unaffected — those exist for contrast needs, not branding,
+  and stay exactly as they were.
 
 ## About the Sign Language Glossary — say this plainly if asked
 
@@ -439,14 +461,47 @@ for this part, only a new frontend panel.
   fundamentals (landmarks, labels, keyboard reachability) are genuinely in
   place, not just claimed.
 
-## Why SQLite is enough here — no separate "large data" database needed
+## Database — SQLite by default, PostgreSQL if you want it
 
-Video and audio recordings are **never** stored inside SQLite — they're
-saved as ordinary files in `backend/recordings/`, and the database only
-holds the *file path* as a short text string. That's the same pattern any
-production system uses (SQLite, Postgres, or otherwise) — databases store
-references to media, not the media itself. So "SQLite can't handle large
-files" isn't actually a risk here; there was nothing to fix.
+The app now supports **both**, switched with one environment variable —
+no code changes needed either way:
+
+- **No `DATABASE_URL` set** → SQLite (`backend/app.db`, a plain file).
+  Zero setup, great for local dev and quick demos.
+- **`DATABASE_URL` set** → PostgreSQL. Real concurrent writes, and (with
+  Render's managed database) survives redeploys independently of the web
+  service's own disk.
+
+This was a genuinely tested migration, not just theory: `backend/app.py`
+has a small `DBConnection` class that's the *only* place that knows two
+databases exist — every actual query elsewhere in the file is still
+written with the same `?`-placeholder SQL it always was. That wrapper
+translates placeholders and handles the couple of real syntax
+differences (auto-increment columns, retrieving a newly-inserted row's
+id) per backend. Every endpoint was tested end-to-end against a real
+local PostgreSQL server before this shipped, not just SQLite.
+
+**Local Postgres setup**, if you want to run it that way:
+```bash
+# macOS: brew install postgresql | Ubuntu/Debian: apt install postgresql
+createdb classroom
+export DATABASE_URL=postgresql://localhost:5432/classroom
+uvicorn app:app --reload --port 8000
+```
+
+**On Render**, `render.yaml` now provisions a free managed Postgres
+database automatically and wires `DATABASE_URL` to it — you don't paste
+a connection string anywhere yourself. One real caveat: **Render's free
+Postgres plan expires 30 days after creation** (then a 14-day grace
+period before the data is permanently deleted). Fine for a hackathon
+happening within that window; if this needs to stay alive longer,
+upgrade the database to a paid plan (starts at $6/month) before the
+30-day mark.
+
+Video/audio recordings still live as files on disk either way, not in
+whichever database you pick — the database only ever stores the file
+*path*. That's the standard pattern at any scale, which is also why
+"SQLite can't handle large files" was never actually a real risk here.
 
 ## Honest scope notes for judges
 

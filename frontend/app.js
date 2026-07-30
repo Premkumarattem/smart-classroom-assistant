@@ -151,7 +151,7 @@ function routeToDashboard() {
     teacherScreen.classList.remove("hidden");
     document.getElementById("welcomeUserTeacher").textContent = currentUser.name;
     document.getElementById("teacherCollegeLabel").textContent = currentUser.college_name || "College";
-    loadAccessibilitySnapshot();
+    loadTeacherAnalytics();
   } else if (currentUser.role === "college") {
     collegeScreen.classList.remove("hidden");
     document.getElementById("welcomeUserCollege").textContent = `${currentUser.name} · ${currentUser.college_name}`;
@@ -165,25 +165,8 @@ function routeToDashboard() {
     else applyFontLevel();
     renderBadges();
     renderSignGlossary();
+    loadRevisionNotes();
     startStudentPolling();
-  }
-}
-
-async function loadAccessibilitySnapshot() {
-  const el = document.getElementById("a11ySnapshotContent");
-  try {
-    const params = new URLSearchParams({ college_name: currentUser.college_name || "" });
-    const res = await fetch(`${API_BASE}/api/accessibility-stats?${params.toString()}`);
-    const data = await res.json();
-    const labels = { vision: "Vision", hearing: "Hearing", speech: "Speech", dyslexia: "Dyslexia", adhd: "ADHD", motor: "Motor" };
-    const chips = Object.entries(data.counts)
-      .filter(([, n]) => n > 0)
-      .map(([k, n]) => `<span class="stat-chip"><strong>${n}</strong> ${labels[k] || k}</span>`)
-      .join("");
-    el.innerHTML = `<span class="stat-chip"><strong>${data.total_students}</strong> students</span>` +
-      (chips || '<span class="stat-chip">No accessibility needs on file yet</span>');
-  } catch (e) {
-    el.innerHTML = '<span class="placeholder">Couldn\'t load — is the backend running?</span>';
   }
 }
 
@@ -428,6 +411,11 @@ function renderBadges() {
     const earned = badgeCounts[b.track] >= b.need;
     return `<span class="badge-chip ${earned ? "earned" : ""}">${b.icon} ${b.label}</span>`;
   }).join("");
+
+  const strip = document.getElementById("activityStrip");
+  if (strip) {
+    strip.textContent = `Your activity this session — questions asked: ${badgeCounts.questions} · explains used: ${badgeCounts.explains}`;
+  }
 }
 function trackActivity(kind) {
   if (badgeCounts[kind] !== undefined) badgeCounts[kind] += 1;
@@ -764,6 +752,7 @@ document.getElementById("teacherChatForm").addEventListener("submit", async (e) 
 // STUDENT DASHBOARD
 // =================================================================
 let studentSessionId = null;
+let studentCurrentSubject = "";
 let studentFullTranscript = "";
 let studentClassPoll = null;
 let studentTranscriptPoll = null;
@@ -817,6 +806,7 @@ async function pollForActiveClass() {
       const active = data.classes[0];
       if (active.id !== studentSessionId) {
         studentSessionId = active.id;
+        studentCurrentSubject = active.subject || "";
         lastRenderedTranscriptLen = 0;
         studentFullTranscript = "";
         document.getElementById("noActiveClassMsg").textContent = `Live now: ${active.subject} — ${active.teacher_name}`;
@@ -1030,6 +1020,7 @@ async function refreshNotes() {
       body: JSON.stringify({
         transcript: studentFullTranscript,
         disabilities: currentDisabilitiesForRequest(),
+        session_id: studentSessionId,
         language: currentUser ? currentUser.language : "english",
       }),
     });
@@ -1064,6 +1055,7 @@ explainBtn.addEventListener("click", async () => {
       body: JSON.stringify({
         transcript: studentFullTranscript,
         disabilities: currentDisabilitiesForRequest(),
+        session_id: studentSessionId,
         language: currentUser ? currentUser.language : "english",
       }),
     });
@@ -1099,6 +1091,7 @@ document.getElementById("qaForm").addEventListener("submit", async (e) => {
       body: JSON.stringify({
         transcript: studentFullTranscript, question,
         disabilities: currentDisabilitiesForRequest(),
+        session_id: studentSessionId,
         language: currentUser ? currentUser.language : "english",
       }),
     });
@@ -1164,7 +1157,7 @@ document.getElementById("flashcardsBtn").addEventListener("click", async () => {
   try {
     const res = await fetch(`${API_BASE}/api/flashcards`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript: studentFullTranscript, language: currentUser ? currentUser.language : "english" }),
+      body: JSON.stringify({ transcript: studentFullTranscript, language: currentUser ? currentUser.language : "english", session_id: studentSessionId }),
     });
     const data = await res.json();
     container.innerHTML = "";
@@ -1198,7 +1191,7 @@ document.getElementById("mindmapBtn").addEventListener("click", async () => {
   try {
     const res = await fetch(`${API_BASE}/api/mindmap`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript: studentFullTranscript, language: currentUser ? currentUser.language : "english" }),
+      body: JSON.stringify({ transcript: studentFullTranscript, language: currentUser ? currentUser.language : "english", session_id: studentSessionId }),
     });
     const data = await res.json();
     const mm = data.mindmap;
@@ -1287,3 +1280,230 @@ document.getElementById("ocrFileInput").addEventListener("change", async (e) => 
   }
   e.target.value = "";
 });
+
+// =================================================================
+// Keyword Search in Transcript
+// =================================================================
+let searchMatches = [];
+let searchCurrentIndex = -1;
+
+function runTranscriptSearch() {
+  const query = document.getElementById("transcriptSearchInput").value.trim();
+  const box = document.getElementById("transcriptBoxStudent");
+  const lines = box.querySelectorAll(".line");
+
+  // Clear previous highlights
+  lines.forEach((line) => { line.innerHTML = line.textContent; });
+  searchMatches = [];
+  searchCurrentIndex = -1;
+
+  if (!query) {
+    document.getElementById("transcriptSearchCount").textContent = "";
+    return;
+  }
+
+  const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  lines.forEach((line) => {
+    const text = line.textContent;
+    if (re.test(text)) {
+      line.innerHTML = text.replace(re, (m) => `<mark>${m}</mark>`);
+    }
+  });
+  searchMatches = Array.from(box.querySelectorAll("mark"));
+
+  document.getElementById("transcriptSearchCount").textContent =
+    searchMatches.length ? `1 / ${searchMatches.length}` : "No matches";
+
+  if (searchMatches.length) jumpToSearchMatch(0);
+}
+
+function jumpToSearchMatch(index) {
+  if (!searchMatches.length) return;
+  searchMatches.forEach((m) => m.classList.remove("current-match"));
+  searchCurrentIndex = (index + searchMatches.length) % searchMatches.length;
+  const current = searchMatches[searchCurrentIndex];
+  current.classList.add("current-match");
+  current.scrollIntoView({ block: "center", behavior: "smooth" });
+  document.getElementById("transcriptSearchCount").textContent =
+    `${searchCurrentIndex + 1} / ${searchMatches.length}`;
+}
+
+document.getElementById("transcriptSearchInput").addEventListener("input", runTranscriptSearch);
+document.getElementById("transcriptSearchNext").addEventListener("click", () => jumpToSearchMatch(searchCurrentIndex + 1));
+document.getElementById("transcriptSearchPrev").addEventListener("click", () => jumpToSearchMatch(searchCurrentIndex - 1));
+
+// =================================================================
+// AI Quiz Generator
+// =================================================================
+document.getElementById("quizBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("quizBtn");
+  const container = document.getElementById("quizContainer");
+  if (!studentFullTranscript.trim()) {
+    container.innerHTML = '<p class="placeholder">No lecture captured yet — the quiz needs something to test you on.</p>';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Generating quiz…";
+  try {
+    const res = await fetch(`${API_BASE}/api/quiz`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transcript: studentFullTranscript,
+        language: currentUser ? currentUser.language : "english",
+        session_id: studentSessionId,
+      }),
+    });
+    const data = await res.json();
+    renderQuiz(data.quiz || []);
+  } catch (err) {
+    container.innerHTML = `<p class="placeholder">Couldn't reach the backend at ${API_BASE}.</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "📝 Generate Quiz";
+  }
+});
+
+function renderQuiz(questions) {
+  const container = document.getElementById("quizContainer");
+  if (!questions.length) {
+    container.innerHTML = '<p class="placeholder">Couldn\'t generate a quiz from this transcript yet — try again once more has been said.</p>';
+    return;
+  }
+  container.innerHTML = "";
+  questions.forEach((q, qi) => {
+    const div = document.createElement("div");
+    div.className = "quiz-question";
+    div.innerHTML = `<div class="q-text">${qi + 1}. ${q.question}</div>`;
+    q.options.forEach((opt, oi) => {
+      const optDiv = document.createElement("div");
+      optDiv.className = "q-option";
+      optDiv.innerHTML = `<input type="radio" name="quiz-q${qi}" value="${oi}" /> <span>${opt}</span>`;
+      optDiv.addEventListener("click", () => optDiv.querySelector("input").checked = true);
+      div.appendChild(optDiv);
+    });
+    container.appendChild(div);
+  });
+  const submitBtn = document.createElement("button");
+  submitBtn.className = "btn btn-primary btn-wide";
+  submitBtn.textContent = "Submit Quiz";
+  submitBtn.style.marginTop = "8px";
+  submitBtn.addEventListener("click", () => gradeQuiz(questions));
+  container.appendChild(submitBtn);
+}
+
+function gradeQuiz(questions) {
+  const container = document.getElementById("quizContainer");
+  const questionDivs = container.querySelectorAll(".quiz-question");
+  let correct = 0;
+  questions.forEach((q, qi) => {
+    const div = questionDivs[qi];
+    const options = div.querySelectorAll(".q-option");
+    const selected = div.querySelector(`input[name="quiz-q${qi}"]:checked`);
+    const selectedIndex = selected ? Number(selected.value) : -1;
+    options.forEach((optDiv, oi) => {
+      optDiv.querySelector("input").disabled = true;
+      if (oi === q.correct_index) optDiv.classList.add("correct");
+      else if (oi === selectedIndex) optDiv.classList.add("incorrect");
+    });
+    if (selectedIndex === q.correct_index) correct += 1;
+  });
+  const scoreDiv = document.createElement("div");
+  scoreDiv.className = "quiz-score";
+  scoreDiv.textContent = `Score: ${correct} / ${questions.length}`;
+  container.appendChild(scoreDiv);
+  container.querySelector(".btn-primary")?.remove();
+  trackActivity("questions"); // counts toward the same activity tracking as asking questions
+}
+
+// =================================================================
+// Personalized Revision Notes — save the current notes, list, delete
+// =================================================================
+document.getElementById("saveNotesBtn").addEventListener("click", async () => {
+  const notesText = document.getElementById("notesContent").innerText.trim();
+  if (!notesText || notesText.includes("Bullet notes generate automatically")) {
+    alert("Refresh notes first, then save them.");
+    return;
+  }
+  const btn = document.getElementById("saveNotesBtn");
+  btn.disabled = true;
+  try {
+    await fetch(`${API_BASE}/api/revision-notes`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        session_id: studentSessionId,
+        subject: studentCurrentSubject,
+        notes_text: notesText,
+      }),
+    });
+    btn.textContent = "✓ saved";
+    loadRevisionNotes();
+    setTimeout(() => { btn.textContent = "💾 save"; btn.disabled = false; }, 1500);
+  } catch (e) {
+    btn.disabled = false;
+    alert("Couldn't save — check the backend is running.");
+  }
+});
+
+async function loadRevisionNotes() {
+  const list = document.getElementById("revisionNotesList");
+  if (!currentUser || !currentUser.token) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/revision-notes`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!data.notes.length) {
+      list.innerHTML = '<li class="placeholder">Notes you save will appear here, across every class.</li>';
+      return;
+    }
+    list.innerHTML = "";
+    data.notes.forEach((n) => {
+      const li = document.createElement("li");
+      const date = new Date(n.created_at).toLocaleDateString();
+      li.innerHTML = `
+        <button class="rn-delete" aria-label="Delete this note">✕</button>
+        <div class="rn-subject">${n.subject || "General"}</div>
+        <div class="rn-date">${date}</div>
+        <div class="rn-text">${n.notes_text}</div>
+      `;
+      li.querySelector(".rn-delete").addEventListener("click", async () => {
+        await fetch(`${API_BASE}/api/revision-notes/${n.id}`, { method: "DELETE", headers: authHeaders() });
+        loadRevisionNotes();
+      });
+      list.appendChild(li);
+    });
+  } catch (e) {
+    list.innerHTML = `<li class="placeholder">Couldn't reach the backend at ${API_BASE}.</li>`;
+  }
+}
+
+// =================================================================
+// Teacher Analytics Dashboard ("Classroom Insights")
+// =================================================================
+async function loadTeacherAnalytics() {
+  const a11yEl = document.getElementById("a11ySnapshotContent");
+  const usageEl = document.getElementById("analyticsUsageGrid");
+  try {
+    const params = new URLSearchParams({ college_name: currentUser.college_name || "" });
+    const res = await fetch(`${API_BASE}/api/analytics?${params.toString()}`);
+    const data = await res.json();
+
+    const labels = { vision: "Vision", hearing: "Hearing", speech: "Speech", dyslexia: "Dyslexia", adhd: "ADHD", motor: "Motor" };
+    const a11yChips = Object.entries(data.accessibility_counts)
+      .filter(([, n]) => n > 0)
+      .map(([k, n]) => `<span class="stat-chip"><strong>${n}</strong> ${labels[k] || k}</span>`)
+      .join("");
+    a11yEl.innerHTML = `<span class="stat-chip"><strong>${data.total_students}</strong> students</span>` +
+      `<span class="stat-chip"><strong>${data.total_classes}</strong> classes held</span>` +
+      (a11yChips || '<span class="stat-chip">No accessibility needs on file yet</span>');
+
+    const usageLabels = { ask: "questions asked", explain: "explain-simply used", summarize: "notes generated", flashcards: "flashcards made", mindmap: "mind maps made", quiz: "quizzes generated" };
+    const usageChips = Object.entries(data.usage_counts)
+      .map(([k, n]) => `<span class="stat-chip"><strong>${n}</strong> ${usageLabels[k] || k}</span>`)
+      .join("");
+    usageEl.innerHTML = usageChips || '<span class="stat-chip">No AI feature usage logged yet this session</span>';
+  } catch (e) {
+    a11yEl.innerHTML = '<span class="placeholder">Couldn\'t load — is the backend running?</span>';
+    usageEl.innerHTML = "";
+  }
+}
+document.getElementById("refreshAnalyticsBtn")?.addEventListener("click", loadTeacherAnalytics);

@@ -15,13 +15,38 @@ services:
         sync: false   # paste in the Render dashboard, not in git — get one free at console.groq.com
       - key: ANTHROPIC_API_KEY
         sync: false   # only needed if you switch MODEL_PROVIDER to "anthropic"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: smart-classroom-db
+          property: connectionString
     autoDeploy: true
 
-# NOTE on persistent storage:
-# The free plan above does NOT include a persistent disk — app.db and any
-# recorded videos reset every time the service restarts or redeploys.
-# That's fine for a hackathon demo (you'll just register fresh test
-# accounts). If you want data to survive long-term, upgrade this service
-# to a paid instance type in the Render dashboard and attach a disk
-# mounted at /opt/render/project/src/backend — see the README's
-# "Deploying" section for exact steps.
+databases:
+  - name: smart-classroom-db
+    databaseName: classroom
+    user: classroom_user
+    plan: free
+
+# NOTE on the database:
+# DATABASE_URL above is wired automatically to the free Postgres instance
+# defined below — the app detects it and uses Postgres instead of SQLite,
+# with zero code changes needed (see backend/app.py's DBConnection class).
+#
+# IMPORTANT — Render's free Postgres plan expires 30 days after creation,
+# then gives a 14-day grace period to upgrade before permanently deleting
+# all data. Fine for a hackathon happening within that window; if this
+# needs to stay alive longer, upgrade the database to a paid plan
+# (Basic-256mb starts at $6/month) well before the 30-day mark.
+#
+# Recordings (audio/video files) still live on local disk either way,
+# not in the database — see the note below about attaching a persistent
+# disk if you want those to survive restarts too.
+
+# NOTE on recording storage:
+# The free web service plan above does NOT include a persistent disk —
+# recorded videos reset every time the service restarts or redeploys,
+# even with Postgres handling the rest of the data. If you want
+# recordings to survive long-term, upgrade the web service to a paid
+# instance type in the Render dashboard and attach a disk mounted at
+# /opt/render/project/src/backend — see the README's "Deploying" section
+# for exact steps.

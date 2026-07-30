@@ -105,10 +105,12 @@
       <div class="panel-head"><span class="panel-number">I</span><h2>Class Session</h2></div>
 
       <div class="a11y-snapshot" id="a11ySnapshot">
-        <span class="mini-head" style="margin:0 0 8px;">Accessibility snapshot for your college</span>
+        <span class="mini-head" style="margin:0 0 8px;">Classroom Insights</span>
         <div id="a11ySnapshotContent" class="a11y-snapshot-grid">
           <span class="placeholder">Loading…</span>
         </div>
+        <div id="analyticsUsageGrid" class="a11y-snapshot-grid" style="margin-top:8px;"></div>
+        <button id="refreshAnalyticsBtn" class="btn btn-ghost btn-small" style="margin-top:8px;">refresh insights</button>
       </div>
 
       <div id="classStartForm">
@@ -186,6 +188,13 @@
         <p class="live-video-status hidden" id="liveVideoStatus">No class is live right now.</p>
       </div>
 
+      <div class="transcript-search">
+        <input type="text" id="transcriptSearchInput" placeholder="🔍 Search the transcript (e.g. 'database', 'sorting')…" aria-label="Search transcript" />
+        <button id="transcriptSearchPrev" class="btn btn-ghost btn-small" aria-label="Previous match">↑</button>
+        <button id="transcriptSearchNext" class="btn btn-ghost btn-small" aria-label="Next match">↓</button>
+        <span id="transcriptSearchCount" class="search-count"></span>
+      </div>
+
       <div class="transcript-box" id="transcriptBoxStudent" aria-live="polite" role="log" aria-label="Live lecture captions">
         <p class="placeholder">Live captions will appear here once a class starts…</p>
       </div>
@@ -209,6 +218,7 @@
         <div class="notes-head">
           <span>auto notes</span>
           <span class="notes-head-actions">
+            <button id="saveNotesBtn" class="btn btn-ghost btn-small">💾 save</button>
             <button id="readNotesBtn" class="btn btn-ghost btn-small">🔊 read aloud</button>
             <button id="summarizeBtn" class="btn btn-ghost btn-small">refresh notes</button>
           </span>
@@ -259,9 +269,13 @@
       <div class="panel-head"><span class="panel-number">III</span><h2>Study Tools</h2></div>
 
       <div class="badge-row" id="badgeRow"></div>
+      <p class="activity-strip" id="activityStrip"></p>
 
       <button id="flashcardsBtn" class="btn btn-primary btn-wide">🎴 Generate Flashcards</button>
       <div id="flashcardsContainer" class="flashcards-container"></div>
+
+      <button id="quizBtn" class="btn btn-primary btn-wide" style="margin-top:14px;">📝 Generate Quiz</button>
+      <div id="quizContainer" class="quiz-container"></div>
 
       <button id="mindmapBtn" class="btn btn-primary btn-wide" style="margin-top:14px;">🧠 Generate Mind Map</button>
       <div id="mindmapContainer" class="mindmap-container"></div>
@@ -274,6 +288,13 @@
           <input type="file" id="ocrFileInput" accept="image/*" capture="environment" class="ocr-file-input" />
         </label>
         <div id="ocrResult" class="notes-content"></div>
+      </div>
+
+      <div class="revision-section">
+        <h3 class="mini-head">📚 My Revision Notes</h3>
+        <ul id="revisionNotesList" class="revision-list">
+          <li class="placeholder">Notes you save will appear here, across every class.</li>
+        </ul>
       </div>
     </section>
   </main>

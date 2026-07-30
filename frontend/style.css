@@ -1,17 +1,21 @@
 :root {
-  --board:        #16302A;
-  --board-panel:  #1E3F37;
-  --board-panel-2:#234A40;
-  --chalk:        #F1EDE2;
-  --chalk-dim:    #B9C9C1;
-  --amber:        #E8A33D;
-  --teal:         #7FA69A;
-  --alert:        #D9694F;
-  --rule:         rgba(241, 237, 226, 0.12);
+  --board:        #0F0B22;
+  --board-panel:  #1B1438;
+  --board-panel-2:#251C4A;
+  --chalk:        #F3EEFF;
+  --chalk-dim:    #A79BC9;
+  --amber:        #C13CFF;
+  --teal:         #22E6D0;
+  --alert:        #FF3B6B;
+  --rule:         rgba(196, 181, 253, 0.16);
 
   --font-display: 'Fraunces', serif;
   --font-body:    'Inter', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
+
+  /* Neon glow — used sparingly, on primary buttons and live/recording indicators */
+  --glow-violet: 0 0 18px rgba(193, 60, 255, 0.55), 0 0 4px rgba(193, 60, 255, 0.8);
+  --glow-teal:   0 0 18px rgba(34, 230, 208, 0.5), 0 0 4px rgba(34, 230, 208, 0.75);
 }
 
 * { box-sizing: border-box; }
@@ -101,9 +105,9 @@ body {
 .dot-status.live { color: var(--alert); }
 
 @keyframes pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(217,105,79,0.5); }
-  70%  { box-shadow: 0 0 0 7px rgba(217,105,79,0); }
-  100% { box-shadow: 0 0 0 0 rgba(217,105,79,0); }
+  0%   { box-shadow: 0 0 0 0 rgba(255,59,107,0.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(255,59,107,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,59,107,0); }
 }
 
 /* ---------- Board / grid ---------- */
@@ -166,7 +170,8 @@ body {
 
 .btn-primary {
   background: var(--amber);
-  color: #1B2420;
+  color: #1A0F2E;
+  box-shadow: var(--glow-violet);
 }
 .btn-primary:hover { opacity: 0.9; }
 .btn-primary.active {
@@ -552,7 +557,7 @@ body {
 
 .chip:has(input:checked) {
   border-color: var(--amber);
-  background: rgba(232, 163, 61, 0.12);
+  background: rgba(193, 60, 255, 0.12);
 }
 
 .chip input { accent-color: var(--amber); }
@@ -598,7 +603,7 @@ body {
   border-radius: 50%;
   border: 1px solid var(--rule);
   background: var(--amber);
-  color: #1B2420;
+  color: #1A0F2E;
   font-size: 18px;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0,0,0,0.35);
@@ -742,7 +747,7 @@ body.big-targets .a11y-toggle {
 }
 
 @keyframes recognizedFlash {
-  0%   { background: rgba(127, 166, 154, 0.35); }
+  0%   { background: rgba(34, 230, 208, 0.35); }
   100% { background: transparent; }
 }
 
@@ -761,7 +766,7 @@ body.big-targets .a11y-toggle {
 }
 
 .btn-explain:hover {
-  background: rgba(232, 163, 61, 0.1);
+  background: rgba(193, 60, 255, 0.1);
 }
 
 .btn-explain.loading {
@@ -770,7 +775,7 @@ body.big-targets .a11y-toggle {
 }
 
 .explain-card {
-  background: rgba(232, 163, 61, 0.08);
+  background: rgba(193, 60, 255, 0.08);
   border: 1px solid var(--amber);
   border-radius: 8px;
   padding: 12px 14px;
@@ -828,7 +833,7 @@ body.dyslexia-font .explain-card p {
 
 .role-tab.active {
   background: var(--amber);
-  color: #1B2420;
+  color: #1A0F2E;
 }
 
 /* =================================================================
@@ -911,7 +916,7 @@ body.dyslexia-font .explain-card p {
 
 .raise-list li.urgent {
   border-color: var(--alert);
-  background: rgba(217, 105, 79, 0.12);
+  background: rgba(255, 59, 107, 0.12);
   animation: pulse 1.4s infinite;
 }
 
@@ -1021,7 +1026,7 @@ body.dyslexia-font .explain-card p {
 }
 
 .recording-link:hover {
-  background: rgba(127, 166, 154, 0.15);
+  background: rgba(34, 230, 208, 0.15);
 }
 
 /* =================================================================
@@ -1063,7 +1068,7 @@ body.dyslexia-font .explain-card p {
 
 .theme-swatch.active { border-color: var(--amber); }
 
-.theme-default { background: linear-gradient(135deg, #16302A 50%, #F1EDE2 50%); }
+.theme-default { background: linear-gradient(135deg, #0F0B22 50%, #F3EEFF 50%); }
 .theme-bw { background: linear-gradient(135deg, #000000 50%, #FFFFFF 50%); }
 .theme-yb { background: linear-gradient(135deg, #000000 50%, #FFD400 50%); }
 .theme-blue { background: linear-gradient(135deg, #0B3D91 50%, #FFFFFF 50%); }
@@ -1087,7 +1092,7 @@ body.dyslexia-font .explain-card p {
 
 .fs-btn.active {
   background: var(--amber);
-  color: #1B2420;
+  color: #1A0F2E;
   border-color: var(--amber);
 }
 
@@ -1230,7 +1235,7 @@ body.magnifier-active { cursor: none; }
 
 .mm-topic {
   background: var(--amber);
-  color: #1B2420;
+  color: #1A0F2E;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 14px;
@@ -1283,7 +1288,7 @@ body.magnifier-active { cursor: none; }
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: var(--amber);
-  color: #1B2420;
+  color: #1A0F2E;
   padding: 2px 6px;
   border-radius: 4px;
   margin-left: 6px;
@@ -1327,7 +1332,7 @@ body.magnifier-active { cursor: none; }
 
 .sign-card.active {
   border-color: var(--amber);
-  background: rgba(232, 163, 61, 0.15);
+  background: rgba(193, 60, 255, 0.15);
   animation: recognizedFlash 2s ease;
 }
 
@@ -1369,7 +1374,7 @@ body.magnifier-active { cursor: none; }
   left: 12px;
   z-index: 1000;
   background: var(--amber);
-  color: #1B2420;
+  color: #1A0F2E;
   padding: 10px 16px;
   border-radius: 6px;
   font-family: var(--font-body);
@@ -1483,4 +1488,170 @@ main:focus {
   width: 100%;
   border-radius: 6px;
   margin-top: 4px;
+}
+
+/* =================================================================
+   Transcript keyword search
+   ================================================================= */
+.transcript-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.transcript-search input {
+  flex: 1;
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--chalk);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+}
+
+.search-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--chalk-dim);
+  white-space: nowrap;
+}
+
+.transcript-box mark {
+  background: var(--amber);
+  color: #1A0F2E;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.transcript-box mark.current-match {
+  background: var(--teal);
+}
+
+/* =================================================================
+   Quiz Generator
+   ================================================================= */
+.quiz-container { margin-top: 12px; }
+
+.quiz-question {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.quiz-question .q-text {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  color: var(--chalk);
+  margin-bottom: 8px;
+}
+
+.quiz-question .q-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--chalk-dim);
+  cursor: pointer;
+}
+
+.quiz-question .q-option:hover { background: var(--board-panel-2); }
+
+.quiz-question .q-option.correct {
+  background: rgba(34, 230, 208, 0.15);
+  color: var(--teal);
+}
+
+.quiz-question .q-option.incorrect {
+  background: rgba(255, 59, 107, 0.15);
+  color: var(--alert);
+}
+
+.quiz-score {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--amber);
+  padding: 10px;
+}
+
+/* =================================================================
+   Revision Notes
+   ================================================================= */
+.revision-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--rule);
+}
+
+.revision-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.revision-list li {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  position: relative;
+}
+
+.revision-list li.placeholder {
+  font-style: italic;
+  color: var(--chalk-dim);
+  border-style: dashed;
+}
+
+.revision-list .rn-subject {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--amber);
+  margin-bottom: 3px;
+}
+
+.revision-list .rn-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--chalk-dim);
+  margin-bottom: 6px;
+}
+
+.revision-list .rn-text {
+  color: var(--chalk-dim);
+  white-space: pre-wrap;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.revision-list .rn-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--chalk-dim);
+  cursor: pointer;
+  font-size: 13px;
+}
+.revision-list .rn-delete:hover { color: var(--alert); }
+
+/* =================================================================
+   Student activity strip (folds "study progress" into existing badges)
+   ================================================================= */
+.activity-strip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--chalk-dim);
+  margin: 0 0 14px;
 }
