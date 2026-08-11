@@ -116,6 +116,38 @@ combined, just by selecting more than one checkbox.
   White) are unaffected — those exist for contrast needs, not branding,
   and stay exactly as they were.
 
+## Semifinal round improvements — camera setup, real multilingual captions, visual polish
+
+- **Camera connect/select** — the teacher now picks and previews their
+  camera *before* going live (👤 "Connect Camera" button on the class-start
+  form), instead of just blindly recording whatever device the browser
+  defaults to. Useful the moment there's more than one camera available
+  (built-in laptop cam + an external webcam, for instance).
+- **Speech-to-text now actually supports 3 languages, not just 1** — this
+  was a real gap: read-aloud (text-to-speech) already worked in English/
+  Telugu/Hindi, but live lecture *transcription* was silently hardcoded to
+  English regardless of what language the teacher was actually speaking.
+  Fixed: a "Lecture language" dropdown on the class-start form (defaulting
+  to the teacher's own profile language) sets the recognition language
+  correctly, so captions are actually accurate in all three languages, not
+  just the read-aloud voice.
+- **Closed captions overlaid directly on the live video** — real
+  closed-captioning style (bottom-third overlay, high contrast), not just
+  a separate scrolling transcript box below the video. Independently
+  resizable (S/M/L/XL) from the general text size, since caption
+  readability needs are often different from the rest of the UI.
+- **Adjustable read-aloud speed** — 0.75x/1x/1.25x/1.5x, saved to the
+  account like every other accessibility preference.
+- **Live "N students connected" counter** — the teacher's screen shows a
+  real-time count of connected students via the same WebSocket
+  infrastructure used for hand-raise/chat, not a fake or static number.
+- **Visual theme, elevated** — glassmorphic panels (frosted blur over an
+  ambient animated gradient glow), gradient-accented headings, and smooth
+  hover micro-interactions throughout. The accessibility contrast presets
+  (Black & White, Yellow & Black, Blue & White) are deliberately untouched
+  by any of this — those solve a different problem and stay exactly as
+  reliable as before.
+
 ## About the Sign Language Glossary — say this plainly if asked
 
 **What it is:** a small set of common classroom phrases (yes, no, question,
@@ -526,6 +558,11 @@ whichever database you pick — the database only ever stores the file
   text match).
 - **No live captions:** Web Speech API is Chrome-only and needs mic
   permission granted on the *teacher's* device, not the student's.
+- **Empty captions when lecturing in Telugu or Hindi:** a small number of
+  Chrome builds/OS combos don't support speech recognition in every
+  language — if this happens, an alert tells the teacher plainly and
+  suggests restarting the class in English. Read-aloud (text-to-speech)
+  is unaffected either way; only live transcription depends on this.
 - **Live video never appears for a student:** first check the teacher
   granted *camera* permission (not just mic) when starting the class —
   without it, captions still work but there's no video to send. If camera

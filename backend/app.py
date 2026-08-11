@@ -499,10 +499,20 @@ class ConnectionManager:
         self.active.setdefault(session_id, []).append(
             {"ws": ws, "role": role, "client_id": client_id, "name": name}
         )
+        await self.broadcast_presence(session_id)
 
     def disconnect(self, session_id: int, ws: WebSocket):
         conns = self.active.get(session_id, [])
         self.active[session_id] = [c for c in conns if c["ws"] is not ws]
+
+    def student_count(self, session_id: int) -> int:
+        return len([c for c in self.active.get(session_id, []) if c["role"] == "student"])
+
+    async def broadcast_presence(self, session_id: int):
+        """Lets the teacher's screen show a live 'N students connected' count."""
+        await self.send_to_role(session_id, "teacher", {
+            "type": "presence", "student_count": self.student_count(session_id),
+        })
 
     async def broadcast(self, session_id: int, message: dict):
         for c in list(self.active.get(session_id, [])):
@@ -569,6 +579,7 @@ async def class_websocket(
                     await manager.send_to_client(session_id, target, msg)
     except WebSocketDisconnect:
         manager.disconnect(session_id, websocket)
+        await manager.broadcast_presence(session_id)
 
 
 # ---------------------------------------------------------------

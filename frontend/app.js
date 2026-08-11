@@ -151,6 +151,8 @@ function routeToDashboard() {
     teacherScreen.classList.remove("hidden");
     document.getElementById("welcomeUserTeacher").textContent = currentUser.name;
     document.getElementById("teacherCollegeLabel").textContent = currentUser.college_name || "College";
+    const langSelect = document.getElementById("lectureLanguageSelect");
+    if (langSelect && currentUser.language) langSelect.value = currentUser.language;
     loadTeacherAnalytics();
   } else if (currentUser.role === "college") {
     collegeScreen.classList.remove("hidden");
@@ -163,6 +165,7 @@ function routeToDashboard() {
     const hadSavedSettings = applySavedSettings(currentUser.settings);
     if (!hadSavedSettings) applyAccessibilityProfile(currentUser.disabilities || []);
     else applyFontLevel();
+    applyCaptionSize();
     renderBadges();
     renderSignGlossary();
     loadRevisionNotes();
@@ -227,6 +230,8 @@ function currentSettingsSnapshot() {
   return {
     theme: document.querySelector(".theme-swatch.active")?.dataset.theme || "default",
     fontLevel,
+    captionSize,
+    speechRate,
     dyslexiaFont: toggleDyslexiaFont.checked,
     focusMode: toggleFocusMode.checked,
     autoRead: toggleAutoRead.checked,
@@ -265,6 +270,11 @@ function applySavedSettings(settings) {
     document.body.classList.add(`theme-${settings.theme}`);
   }
   if (typeof settings.fontLevel === "number") fontLevel = settings.fontLevel;
+  if (typeof settings.captionSize === "number") captionSize = settings.captionSize;
+  if (typeof settings.speechRate === "number") {
+    speechRate = settings.speechRate;
+    document.querySelectorAll(".speed-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.speed) === speechRate));
+  }
   toggleDyslexiaFont.checked = !!settings.dyslexiaFont;
   toggleFocusMode.checked = !!settings.focusMode;
   toggleAutoRead.checked = !!settings.autoRead;
@@ -312,6 +322,20 @@ function applyFontLevel() {
 }
 document.querySelectorAll(".fs-btn").forEach((btn) => {
   btn.addEventListener("click", () => { fontLevel = Number(btn.dataset.size); applyFontLevel(); saveSettingsDebounced(); });
+});
+
+// ---- Caption size presets, independent of general text size ----
+let captionSize = 1;
+function applyCaptionSize() {
+  const overlay = document.getElementById("captionOverlay");
+  overlay.classList.remove("caption-small", "caption-large", "caption-xlarge");
+  if (captionSize === 0) overlay.classList.add("caption-small");
+  if (captionSize === 2) overlay.classList.add("caption-large");
+  if (captionSize === 3) overlay.classList.add("caption-xlarge");
+  document.querySelectorAll(".cap-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.size) === captionSize));
+}
+document.querySelectorAll(".cap-btn").forEach((btn) => {
+  btn.addEventListener("click", () => { captionSize = Number(btn.dataset.size); applyCaptionSize(); saveSettingsDebounced(); });
 });
 
 // ---- Magnifier mode ----
@@ -373,13 +397,26 @@ function applyAccessibilityProfile(disabilities) {
   applyFontLevel();
 }
 
+// Shared locale codes for Web Speech APIs (both recognition and synthesis) —
+// one source of truth so the "3 languages" support is consistent everywhere.
+const LANG_MAP = { telugu: "te-IN", hindi: "hi-IN", english: "en-US" };
+
+let speechRate = 1;
+document.querySelectorAll(".speed-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".speed-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    speechRate = Number(btn.dataset.speed);
+    saveSettingsDebounced();
+  });
+});
+
 function speak(text) {
   if (!("speechSynthesis" in window) || !text) return;
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
-  const langMap = { telugu: "te-IN", hindi: "hi-IN", english: "en-US" };
-  utter.lang = langMap[currentUser?.language] || "en-US";
-  utter.rate = 0.98;
+  utter.lang = LANG_MAP[currentUser?.language] || "en-US";
+  utter.rate = speechRate;
   window.speechSynthesis.speak(utter);
 }
 
@@ -438,9 +475,58 @@ let handRaisePoll = null;
 let teacherChatPoll = null;
 let teacherLastChatId = 0;
 
+// ---- Camera connect/select — pick and preview a camera before going live ----
+let cameraSetupStream = null;
+let selectedCameraDeviceId = null;
+
+document.getElementById("connectCameraBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("connectCameraBtn");
+  btn.disabled = true;
+  btn.textContent = "Connecting…";
+  try {
+    // Requesting video once unlocks device labels for enumerateDevices() below,
+    // and gives an immediate preview so the teacher knows it's actually working.
+    if (cameraSetupStream) cameraSetupStream.getTracks().forEach((t) => t.stop());
+    cameraSetupStream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+    const preview = document.getElementById("camSetupPreview");
+    preview.srcObject = cameraSetupStream;
+    document.getElementById("camSetupPreviewWrap").classList.remove("hidden");
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter((d) => d.kind === "videoinput");
+    const select = document.getElementById("cameraSelect");
+    select.innerHTML = cameras.map((c, i) => `<option value="${c.deviceId}">${c.label || `Camera ${i + 1}`}</option>`).join("");
+    select.classList.toggle("hidden", cameras.length <= 1);
+    selectedCameraDeviceId = cameras[0]?.deviceId || null;
+
+    btn.textContent = "📷 Camera connected ✓";
+  } catch (err) {
+    console.warn("Camera connect failed:", err);
+    btn.textContent = "📷 Connect Camera";
+    alert("Couldn't access a camera. Check browser permissions — captions will still work without it.");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("cameraSelect").addEventListener("change", async (e) => {
+  selectedCameraDeviceId = e.target.value;
+  try {
+    if (cameraSetupStream) cameraSetupStream.getTracks().forEach((t) => t.stop());
+    cameraSetupStream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: selectedCameraDeviceId } },
+    });
+    document.getElementById("camSetupPreview").srcObject = cameraSetupStream;
+  } catch (err) {
+    console.warn("Couldn't switch camera:", err);
+  }
+});
+
 document.getElementById("startClassBtn").addEventListener("click", async () => {
   const subject = document.getElementById("subjectInput").value.trim();
   if (!subject) { alert("Enter a subject first."); return; }
+  const lectureLanguage = document.getElementById("lectureLanguageSelect").value;
 
   try {
     const res = await fetch(`${API_BASE}/api/classes/start`, {
@@ -458,14 +544,20 @@ document.getElementById("startClassBtn").addEventListener("click", async () => {
     return;
   }
 
+  // The setup-only preview stream did its job (letting the teacher pick a
+  // camera) — release it now so the real combined audio+video stream below
+  // isn't fighting it for the same device.
+  if (cameraSetupStream) { cameraSetupStream.getTracks().forEach((t) => t.stop()); cameraSetupStream = null; }
+
   document.getElementById("classStartForm").classList.add("hidden");
   document.getElementById("classActivePanel").classList.remove("hidden");
   document.getElementById("classNotesPanel").classList.add("hidden");
   document.getElementById("activeSubjectLabel").textContent = subject;
+  updateStudentCountBadge(0);
   document.getElementById("transcriptBoxTeacher").innerHTML = '<p class="placeholder">Listening…</p>';
   teacherFullTranscript = "";
 
-  startTeacherSpeechRecognition();
+  startTeacherSpeechRecognition(LANG_MAP[lectureLanguage] || "en-US");
   await startTeacherRecording();  // must finish before students can connect and request video
   connectTeacherWebSocket(teacherSessionId);
   handRaisePoll = setInterval(pollHandRaises, 8000);   // safety net — WS handles instant updates
@@ -498,8 +590,15 @@ function connectTeacherWebSocket(sessionId) {
     if (msg.type === "video_join") await startVideoForStudent(msg.from);
     if (msg.type === "webrtc_answer") await handleStudentAnswer(msg);
     if (msg.type === "webrtc_ice" && msg.candidate) await handleStudentIce(msg);
+    if (msg.type === "presence") updateStudentCountBadge(msg.student_count);
   };
   teacherWS.onerror = () => console.warn("Teacher WebSocket error — falling back to polling only.");
+}
+
+function updateStudentCountBadge(count) {
+  const el = document.getElementById("studentCountBadge");
+  if (!el) return;
+  el.textContent = `👥 ${count} student${count === 1 ? "" : "s"} connected`;
 }
 
 async function startVideoForStudent(studentClientId) {
@@ -556,7 +655,7 @@ function appendTeacherTranscriptLine(text) {
   box.scrollTop = box.scrollHeight;
 }
 
-function startTeacherSpeechRecognition() {
+function startTeacherSpeechRecognition(langCode) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     alert("Live captions need Chrome (Web Speech API not supported here). Recording will still work.");
@@ -565,7 +664,7 @@ function startTeacherSpeechRecognition() {
   teacherRecognition = new SpeechRecognition();
   teacherRecognition.continuous = true;
   teacherRecognition.interimResults = false;
-  teacherRecognition.lang = "en-US";
+  teacherRecognition.lang = langCode || "en-US";
 
   teacherRecognition.onresult = (event) => {
     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -585,6 +684,13 @@ function startTeacherSpeechRecognition() {
     }
   };
   teacherRecognition.onend = () => { if (teacherListening) teacherRecognition.start(); };
+  teacherRecognition.onerror = (e) => {
+    if (e.error === "language-not-supported") {
+      alert(`This browser doesn't support speech recognition in the selected lecture language (${teacherRecognition.lang}). Captions will be empty until you restart the class in English.`);
+      teacherListening = false;
+    }
+    // other error types (e.g. "no-speech") are transient — onend already restarts recognition
+  };
   teacherListening = true;
   teacherRecognition.start();
 }
@@ -593,7 +699,10 @@ let teacherCamStream = null;
 
 async function startTeacherRecording() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    const videoConstraint = selectedCameraDeviceId
+      ? { deviceId: { exact: selectedCameraDeviceId } }
+      : true;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: videoConstraint });
     teacherCamStream = stream;
     const preview = document.getElementById("teacherCamPreview");
     preview.srcObject = stream;
@@ -908,6 +1017,24 @@ function setLiveVideoStatus(text) {
   else { el.classList.add("hidden"); }
 }
 
+let captionClearTimer = null;
+function updateCaptionOverlay(text) {
+  const el = document.getElementById("captionOverlay");
+  if (!el || !text) return;
+  el.textContent = text;
+  el.classList.remove("hidden");
+  applyCaptionSize();
+  // Real closed captions don't linger forever once the speaker moves on —
+  // clear after a pause so the overlay doesn't show stale text indefinitely.
+  clearTimeout(captionClearTimer);
+  captionClearTimer = setTimeout(() => el.classList.add("hidden"), 6000);
+}
+function clearCaptionOverlay() {
+  clearTimeout(captionClearTimer);
+  const el = document.getElementById("captionOverlay");
+  if (el) el.classList.add("hidden");
+}
+
 function closeStudentWebSocket() {
   if (studentWS) { studentWS.close(); studentWS = null; }
   if (studentPeerConnection) { studentPeerConnection.close(); studentPeerConnection = null; }
@@ -915,6 +1042,7 @@ function closeStudentWebSocket() {
   const video = document.getElementById("liveVideoStudent");
   if (video) video.srcObject = null;
   setLiveVideoStatus("No class is live right now.");
+  clearCaptionOverlay();
 }
 
 function appendLiveTranscriptChunk(chunk) {
@@ -929,6 +1057,7 @@ function appendLiveTranscriptChunk(chunk) {
   box.appendChild(p);
   box.scrollTop = box.scrollHeight;
   flashMatchingSignCards(chunk);
+  updateCaptionOverlay(chunk.trim());
 }
 
 async function pollStudentTranscript() {
@@ -948,6 +1077,7 @@ async function pollStudentTranscript() {
       box.scrollTop = box.scrollHeight;
       lastRenderedTranscriptLen = studentFullTranscript.length;
       flashMatchingSignCards(newText);
+      updateCaptionOverlay(newText.trim());
     }
     if (data.session.status === "ended") {
       clearInterval(studentTranscriptPoll);

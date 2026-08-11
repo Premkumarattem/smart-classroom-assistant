@@ -117,13 +117,30 @@
         <label class="field-label">Subject
           <input type="text" id="subjectInput" placeholder="e.g. Physics — Newton's Laws" />
         </label>
-        <button id="startClassBtn" class="btn btn-primary btn-wide">▶ Start Class (record video + captions)</button>
+
+        <label class="field-label">Lecture language (for live captions)
+          <select id="lectureLanguageSelect">
+            <option value="english">English</option>
+            <option value="telugu">తెలుగు (Telugu)</option>
+            <option value="hindi">हिन्दी (Hindi)</option>
+          </select>
+        </label>
+
+        <label class="field-label">Camera</label>
+        <button id="connectCameraBtn" type="button" class="btn btn-ghost btn-wide">📷 Connect Camera</button>
+        <div class="cam-preview-wrap cam-preview-setup hidden" id="camSetupPreviewWrap">
+          <video id="camSetupPreview" autoplay muted playsinline></video>
+        </div>
+        <select id="cameraSelect" class="hidden" aria-label="Choose camera"></select>
+
+        <button id="startClassBtn" class="btn btn-primary btn-wide" style="margin-top:12px;">▶ Start Class (record video + captions)</button>
         <p class="hint">Records video + audio from this device's camera/mic and streams live captions to students. Chrome only.</p>
       </div>
 
       <div id="classActivePanel" class="hidden">
         <div class="active-banner">
           <span class="dot-status live"><span class="dot"></span> recording — <span id="activeSubjectLabel"></span></span>
+          <span class="student-count-badge" id="studentCountBadge">👥 0 students connected</span>
         </div>
         <div class="cam-preview-wrap">
           <video id="teacherCamPreview" autoplay muted playsinline></video>
@@ -186,6 +203,7 @@
       <div class="live-video-wrap">
         <video id="liveVideoStudent" autoplay playsinline></video>
         <p class="live-video-status hidden" id="liveVideoStatus">No class is live right now.</p>
+        <p class="caption-overlay hidden" id="captionOverlay" aria-live="polite"></p>
       </div>
 
       <div class="transcript-search">
@@ -363,6 +381,22 @@
     <label class="a11y-row"><input type="checkbox" id="toggleMagnifier" /> Magnifier mode</label>
     <label class="a11y-row"><input type="checkbox" id="toggleVoiceCommands" /> Voice commands</label>
     <p class="a11y-hint">Voice commands: "explain that", "ask a question", "raise hand"</p>
+
+    <span class="a11y-subhead">Caption size (on live video)</span>
+    <div class="fontsize-row">
+      <button type="button" class="cap-btn" data-size="0">S</button>
+      <button type="button" class="cap-btn active" data-size="1">M</button>
+      <button type="button" class="cap-btn" data-size="2">L</button>
+      <button type="button" class="cap-btn" data-size="3">XL</button>
+    </div>
+
+    <span class="a11y-subhead">Read-aloud speed</span>
+    <div class="fontsize-row">
+      <button type="button" class="speed-btn" data-speed="0.75">0.75x</button>
+      <button type="button" class="speed-btn active" data-speed="1">1x</button>
+      <button type="button" class="speed-btn" data-speed="1.25">1.25x</button>
+      <button type="button" class="speed-btn" data-speed="1.5">1.5x</button>
+    </div>
   </div>
 </div>
 
