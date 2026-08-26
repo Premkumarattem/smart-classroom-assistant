@@ -147,6 +147,37 @@ combined, just by selecting more than one checkbox.
   (Black & White, Yellow & Black, Blue & White) are deliberately untouched
   by any of this — those solve a different problem and stay exactly as
   reliable as before.
+- **Official T4PF brand palette** — the theme now uses the exact colors
+  from the event's presentation guidelines (Capgemini Dark Blue `#121A38`
+  as the base, Brand Yellow `#FEB100` as the primary accent, Brand Teal
+  `#00828E` as the secondary accent, Brand Orange `#FF816E` for
+  urgent/alert states, Brand Purple `#71609E` for the AI Chat identity) —
+  not invented colors, the real ones from the guideline PDF.
+- **AI Chat vs Teacher Chat — no longer confusing** — both were previously
+  just "chat," easy to mix up. Now clearly separate blocks with distinct
+  names, icons, and accent colors: 🤖 **AI Chat** (Brand Purple, "answers
+  grounded only in today's lecture") and 👩‍🏫 **Teacher Chat** (Brand Teal,
+  "goes to your teacher directly, not AI") — same distinction mirrored on
+  the teacher's own dashboard.
+- **Teacher Timetable ("My Classes")** — a new panel on the teacher
+  dashboard listing every class they've held, most recent first, with
+  date, time, and a live "● live now" indicator for the current one.
+- **Quiz/GK scores now reach the teacher** — this was a real gap: quizzes
+  were graded entirely in the browser with no record anywhere. Now every
+  submitted score is saved and shows up in a live-updating "Quiz Scores"
+  list on the teacher's dashboard (student name, subject, score,
+  color-coded by performance), refreshing automatically during a class.
+- **Live caption translation, independent of the teacher's language** —
+  previously, captions displayed in whatever language the *teacher*
+  selected when starting class. Now each *student* picks their own
+  caption language (English/Telugu/Hindi), and if it differs from what
+  the teacher is actually speaking, captions are translated live,
+  sentence by sentence, via the AI. If they match, there's no translation
+  call at all — zero added latency. The prompt explicitly asks for a
+  faithful, literal rendering suited to real-time reading, not a loose
+  paraphrase — and if a translation call ever fails, the caption falls
+  back to the original text instead of going blank, so captions never
+  just disappear.
 
 ## About the Sign Language Glossary — say this plainly if asked
 

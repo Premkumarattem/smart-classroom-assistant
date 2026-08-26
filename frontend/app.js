@@ -154,6 +154,8 @@ function routeToDashboard() {
     const langSelect = document.getElementById("lectureLanguageSelect");
     if (langSelect && currentUser.language) langSelect.value = currentUser.language;
     loadTeacherAnalytics();
+    loadTeacherTimetable();
+    loadQuizResults();
   } else if (currentUser.role === "college") {
     collegeScreen.classList.remove("hidden");
     document.getElementById("welcomeUserCollege").textContent = `${currentUser.name} · ${currentUser.college_name}`;
@@ -163,8 +165,14 @@ function routeToDashboard() {
     document.getElementById("welcomeUserStudent").textContent = currentUser.name;
     document.getElementById("a11yToolbar").classList.remove("hidden");
     const hadSavedSettings = applySavedSettings(currentUser.settings);
-    if (!hadSavedSettings) applyAccessibilityProfile(currentUser.disabilities || []);
-    else applyFontLevel();
+    if (!hadSavedSettings) {
+      applyAccessibilityProfile(currentUser.disabilities || []);
+      captionLanguage = currentUser.language || "english";
+      const sel = document.getElementById("captionLanguageSelect");
+      if (sel) sel.value = captionLanguage;
+    } else {
+      applyFontLevel();
+    }
     applyCaptionSize();
     renderBadges();
     renderSignGlossary();
@@ -187,7 +195,7 @@ function routeToDashboard() {
 })();
 
 function stopAllPolling() {
-  [handRaisePoll, teacherChatPoll, studentClassPoll, studentTranscriptPoll, studentChatPoll].forEach((id) => {
+  [handRaisePoll, teacherChatPoll, quizResultsPoll, studentClassPoll, studentTranscriptPoll, studentChatPoll].forEach((id) => {
     if (id) clearInterval(id);
   });
   closeTeacherWebSocket();
@@ -232,6 +240,7 @@ function currentSettingsSnapshot() {
     fontLevel,
     captionSize,
     speechRate,
+    captionLanguage,
     dyslexiaFont: toggleDyslexiaFont.checked,
     focusMode: toggleFocusMode.checked,
     autoRead: toggleAutoRead.checked,
@@ -271,6 +280,11 @@ function applySavedSettings(settings) {
   }
   if (typeof settings.fontLevel === "number") fontLevel = settings.fontLevel;
   if (typeof settings.captionSize === "number") captionSize = settings.captionSize;
+  if (settings.captionLanguage) {
+    captionLanguage = settings.captionLanguage;
+    const sel = document.getElementById("captionLanguageSelect");
+    if (sel) sel.value = captionLanguage;
+  }
   if (typeof settings.speechRate === "number") {
     speechRate = settings.speechRate;
     document.querySelectorAll(".speed-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.speed) === speechRate));
@@ -401,6 +415,47 @@ function applyAccessibilityProfile(disabilities) {
 // one source of truth so the "3 languages" support is consistent everywhere.
 const LANG_MAP = { telugu: "te-IN", hindi: "hi-IN", english: "en-US" };
 
+// ---- Caption language — independent of whatever language the teacher
+// is actually lecturing in. Defaults to the student's own profile
+// language, only calls the translation API when the two actually differ.
+let captionLanguage = "english";
+const LANG_LABEL = { telugu: "Telugu", hindi: "Hindi", english: "English" };
+
+document.getElementById("captionLanguageSelect").addEventListener("change", (e) => {
+  captionLanguage = e.target.value;
+  updateCaptionLangNote();
+  saveSettingsDebounced();
+});
+
+function updateCaptionLangNote() {
+  const note = document.getElementById("captionLangNote");
+  if (!note) return;
+  if (captionLanguage !== classLectureLanguage) {
+    note.textContent = `translating live from ${LANG_LABEL[classLectureLanguage] || "English"} → ${LANG_LABEL[captionLanguage] || "English"}`;
+  } else {
+    note.textContent = "";
+  }
+}
+
+// Every live caption (video overlay + scrolling transcript) passes through
+// here first. If the student's caption language matches what the teacher
+// is actually speaking, this is a same-tick passthrough — no network call,
+// no delay. It only translates when the two genuinely differ.
+async function translateForCaption(text) {
+  if (!text || captionLanguage === classLectureLanguage) return text;
+  try {
+    const res = await fetch(`${API_BASE}/api/translate-caption`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, source_language: classLectureLanguage, target_language: captionLanguage }),
+    });
+    const data = await res.json();
+    return data.translated || text;
+  } catch (e) {
+    return text; // a caption in the wrong language beats no caption at all
+  }
+}
+
 let speechRate = 1;
 document.querySelectorAll(".speed-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -473,6 +528,7 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let handRaisePoll = null;
 let teacherChatPoll = null;
+let quizResultsPoll = null;
 let teacherLastChatId = 0;
 
 // ---- Camera connect/select — pick and preview a camera before going live ----
@@ -535,6 +591,7 @@ document.getElementById("startClassBtn").addEventListener("click", async () => {
       body: JSON.stringify({
         teacher_id: currentUser.id, teacher_name: currentUser.name,
         college_name: currentUser.college_name, subject,
+        lecture_language: lectureLanguage,
       }),
     });
     const data = await res.json();
@@ -562,8 +619,10 @@ document.getElementById("startClassBtn").addEventListener("click", async () => {
   connectTeacherWebSocket(teacherSessionId);
   handRaisePoll = setInterval(pollHandRaises, 8000);   // safety net — WS handles instant updates
   teacherChatPoll = setInterval(pollTeacherChat, 8000); // safety net — WS handles instant updates
+  quizResultsPoll = setInterval(loadQuizResults, 10000); // catches GK/quiz scores as students submit them
   teacherLastChatId = 0;
   document.getElementById("teacherChatThread").innerHTML = '<p class="placeholder">Messages from students who can\'t speak will appear here.</p>';
+  loadTeacherTimetable();
 });
 
 // Public STUN server so browsers can find a direct path to each other
@@ -742,6 +801,7 @@ document.getElementById("stopClassBtn").addEventListener("click", async () => {
   if (teacherRecognition) teacherRecognition.stop();
   clearInterval(handRaisePoll);
   clearInterval(teacherChatPoll);
+  clearInterval(quizResultsPoll);
   closeTeacherWebSocket();
 
   const stopBtn = document.getElementById("stopClassBtn");
@@ -794,6 +854,9 @@ document.getElementById("stopClassBtn").addEventListener("click", async () => {
   document.getElementById("classStartForm").classList.remove("hidden");
   document.getElementById("subjectInput").value = "";
   teacherSessionId = null;
+  loadTeacherTimetable();
+  loadQuizResults();
+  loadTeacherAnalytics();
 });
 
 async function pollHandRaises() {
@@ -862,6 +925,7 @@ document.getElementById("teacherChatForm").addEventListener("submit", async (e) 
 // =================================================================
 let studentSessionId = null;
 let studentCurrentSubject = "";
+let classLectureLanguage = "english";
 let studentFullTranscript = "";
 let studentClassPoll = null;
 let studentTranscriptPoll = null;
@@ -916,6 +980,8 @@ async function pollForActiveClass() {
       if (active.id !== studentSessionId) {
         studentSessionId = active.id;
         studentCurrentSubject = active.subject || "";
+        classLectureLanguage = active.lecture_language || "english";
+        updateCaptionLangNote();
         lastRenderedTranscriptLen = 0;
         studentFullTranscript = "";
         document.getElementById("noActiveClassMsg").textContent = `Live now: ${active.subject} — ${active.teacher_name}`;
@@ -965,7 +1031,7 @@ function connectStudentWebSocket(sessionId) {
 
   studentWS.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
-    if (msg.type === "transcript") appendLiveTranscriptChunk(msg.chunk);
+    if (msg.type === "transcript") await appendLiveTranscriptChunk(msg.chunk);
     if (msg.type === "chat") pollStudentChat();
     if (msg.type === "webrtc_offer") await handleTeacherOffer(msg);
     if (msg.type === "webrtc_ice" && msg.candidate) await handleTeacherIce(msg);
@@ -1045,19 +1111,23 @@ function closeStudentWebSocket() {
   clearCaptionOverlay();
 }
 
-function appendLiveTranscriptChunk(chunk) {
+async function appendLiveTranscriptChunk(chunk) {
   if (!chunk) return;
+  // The original (untranslated) text stays the source of truth for AI
+  // features — Q&A, notes, etc. already handle their own language
+  // adaptation server-side. Only the on-screen caption gets translated.
   studentFullTranscript = (studentFullTranscript + " " + chunk).trim();
   lastRenderedTranscriptLen = studentFullTranscript.length;
   const box = document.getElementById("transcriptBoxStudent");
   if (box.querySelector(".placeholder")) box.innerHTML = "";
+  const displayText = await translateForCaption(chunk.trim());
   const p = document.createElement("p");
   p.className = "line";
-  p.textContent = chunk.trim();
+  p.textContent = displayText;
   box.appendChild(p);
   box.scrollTop = box.scrollHeight;
   flashMatchingSignCards(chunk);
-  updateCaptionOverlay(chunk.trim());
+  updateCaptionOverlay(displayText);
 }
 
 async function pollStudentTranscript() {
@@ -1070,14 +1140,15 @@ async function pollStudentTranscript() {
       const box = document.getElementById("transcriptBoxStudent");
       if (box.querySelector(".placeholder")) box.innerHTML = "";
       const newText = studentFullTranscript.slice(lastRenderedTranscriptLen);
+      const displayText = await translateForCaption(newText.trim());
       const p = document.createElement("p");
       p.className = "line";
-      p.textContent = newText.trim();
+      p.textContent = displayText;
       box.appendChild(p);
       box.scrollTop = box.scrollHeight;
       lastRenderedTranscriptLen = studentFullTranscript.length;
       flashMatchingSignCards(newText);
-      updateCaptionOverlay(newText.trim());
+      updateCaptionOverlay(displayText);
     }
     if (data.session.status === "ended") {
       clearInterval(studentTranscriptPoll);
@@ -1543,6 +1614,19 @@ function gradeQuiz(questions) {
   container.appendChild(scoreDiv);
   container.querySelector(".btn-primary")?.remove();
   trackActivity("questions"); // counts toward the same activity tracking as asking questions
+
+  // Save the score so it shows up live on the teacher's dashboard —
+  // previously quizzes were graded only in the browser with no record.
+  fetch(`${API_BASE}/api/quiz-results`, {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      session_id: studentSessionId,
+      subject: studentCurrentSubject,
+      score: correct,
+      total: questions.length,
+    }),
+  }).catch(() => { /* non-critical — the student still sees their own score either way */ });
 }
 
 // =================================================================
@@ -1637,3 +1721,69 @@ async function loadTeacherAnalytics() {
   }
 }
 document.getElementById("refreshAnalyticsBtn")?.addEventListener("click", loadTeacherAnalytics);
+
+// =================================================================
+// Teacher: Class Timetable
+// =================================================================
+async function loadTeacherTimetable() {
+  const list = document.getElementById("timetableList");
+  if (!list || !currentUser) return;
+  try {
+    const params = new URLSearchParams({ teacher_name: currentUser.name, college_name: currentUser.college_name || "" });
+    const res = await fetch(`${API_BASE}/api/classes?${params.toString()}`);
+    const data = await res.json();
+    if (!data.classes.length) {
+      list.innerHTML = '<li class="placeholder">Classes you\'ve held will appear here, most recent first.</li>';
+      return;
+    }
+    list.innerHTML = "";
+    data.classes.forEach((c) => {
+      const li = document.createElement("li");
+      const start = c.start_time ? new Date(c.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+      const end = c.end_time ? new Date(c.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : null;
+      const statusText = c.status === "active" ? `<span class="tt-status-active">● live now</span>` : (end ? `${start}–${end}` : start);
+      li.innerHTML = `
+        <div class="tt-subject">${c.subject}</div>
+        <div class="tt-meta"><span>${c.session_date}</span><span>${statusText}</span></div>
+      `;
+      list.appendChild(li);
+    });
+  } catch (e) {
+    list.innerHTML = `<li class="placeholder">Couldn't reach the backend at ${API_BASE}.</li>`;
+  }
+}
+document.getElementById("refreshTimetableBtn")?.addEventListener("click", loadTeacherTimetable);
+
+// =================================================================
+// Teacher: Quiz / GK Scores
+// =================================================================
+async function loadQuizResults() {
+  const list = document.getElementById("quizResultsList");
+  if (!list || !currentUser) return;
+  try {
+    const params = new URLSearchParams({ college_name: currentUser.college_name || "" });
+    const res = await fetch(`${API_BASE}/api/quiz-results?${params.toString()}`);
+    const data = await res.json();
+    if (!data.results.length) {
+      list.innerHTML = '<li class="placeholder">Student quiz scores will appear here as they\'re submitted.</li>';
+      return;
+    }
+    list.innerHTML = "";
+    data.results.forEach((r) => {
+      const li = document.createElement("li");
+      const pct = r.total ? r.score / r.total : 0;
+      const scoreClass = pct >= 0.7 ? "high" : pct >= 0.4 ? "mid" : "low";
+      const date = new Date(r.submitted_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      li.innerHTML = `
+        <div class="qr-row">
+          <span class="qr-name">${r.student_name}</span>
+          <span class="qr-score ${scoreClass}">${r.score}/${r.total}</span>
+        </div>
+        <div class="qr-subject">${r.subject || "General"} · ${date}</div>
+      `;
+      list.appendChild(li);
+    });
+  } catch (e) {
+    list.innerHTML = `<li class="placeholder">Couldn't reach the backend at ${API_BASE}.</li>`;
+  }
+}

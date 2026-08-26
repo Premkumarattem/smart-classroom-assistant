@@ -166,7 +166,7 @@
     </section>
 
     <section class="panel panel-chat">
-      <div class="panel-head"><span class="panel-number">III</span><h2>Student Chat</h2></div>
+      <div class="panel-head"><span class="panel-number">III</span><h2>👩‍🏫 Teacher Chat <span class="chat-sub">— from students, not AI</span></h2></div>
       <div id="teacherChatThread" class="qa-thread">
         <p class="placeholder">Messages from students who can't speak will appear here.</p>
       </div>
@@ -174,6 +174,19 @@
         <input type="text" id="teacherChatInput" placeholder="Reply to the class…" autocomplete="off" />
         <button type="submit" class="btn btn-primary">Send</button>
       </form>
+    </section>
+
+    <section class="panel panel-timetable">
+      <div class="panel-head"><span class="panel-number">IV</span><h2>My Classes</h2></div>
+      <button id="refreshTimetableBtn" class="btn btn-ghost btn-small btn-wide">refresh timetable</button>
+      <ul id="timetableList" class="timetable-list">
+        <li class="placeholder">Classes you've held will appear here, most recent first.</li>
+      </ul>
+
+      <h3 class="mini-head">📊 Quiz Scores</h3>
+      <ul id="quizResultsList" class="quiz-results-list">
+        <li class="placeholder">Student quiz scores will appear here as they're submitted.</li>
+      </ul>
     </section>
   </main>
 </div>
@@ -199,6 +212,16 @@
     <section class="panel panel-transcript">
       <div class="panel-head"><span class="panel-number">I</span><h2>Live Captions &amp; Notes</h2></div>
       <p class="hint" id="noActiveClassMsg">No class is live right now for your college. This checks every few seconds.</p>
+
+      <div class="caption-lang-row">
+        <label for="captionLanguageSelect">🌐 Caption language</label>
+        <select id="captionLanguageSelect">
+          <option value="english">English</option>
+          <option value="telugu">తెలుగు (Telugu)</option>
+          <option value="hindi">हिन्दी (Hindi)</option>
+        </select>
+        <span id="captionLangNote" class="caption-lang-note"></span>
+      </div>
 
       <div class="live-video-wrap">
         <video id="liveVideoStudent" autoplay playsinline></video>
@@ -265,22 +288,27 @@
         <button id="emergencyBtn" class="btn btn-emergency btn-wide" aria-label="Send urgent emergency alert to the teacher">🚨 Emergency Help</button>
       </div>
 
-      <div class="qa-thread" id="qaThread" aria-live="polite" role="log" aria-label="Questions and answers">
-        <p class="placeholder">Questions are answered using only what's been said in class so far.</p>
+      <div class="chat-block chat-block-ai">
+        <h3 class="mini-head mini-head-ai">🤖 AI Chat <span class="chat-sub">— answers grounded only in today's lecture</span></h3>
+        <div class="qa-thread" id="qaThread" aria-live="polite" role="log" aria-label="AI chat — questions and answers">
+          <p class="placeholder">Questions are answered using only what's been said in class so far.</p>
+        </div>
+        <form id="qaForm" class="qa-form">
+          <input type="text" id="qaInput" placeholder="Ask the AI about today's lecture…" autocomplete="off" />
+          <button type="submit" class="btn btn-primary">Ask AI</button>
+        </form>
       </div>
-      <form id="qaForm" class="qa-form">
-        <input type="text" id="qaInput" placeholder="Ask about today's lecture…" autocomplete="off" />
-        <button type="submit" class="btn btn-primary">Ask</button>
-      </form>
 
-      <h3 class="mini-head">Chat with teacher</h3>
-      <div class="qa-thread chat-thread" id="studentChatThread">
-        <p class="placeholder">Type instead of speaking — the teacher sees this live.</p>
+      <div class="chat-block chat-block-teacher">
+        <h3 class="mini-head mini-head-teacher">👩‍🏫 Teacher Chat <span class="chat-sub">— goes to your teacher directly, not AI</span></h3>
+        <div class="qa-thread chat-thread" id="studentChatThread" aria-label="Teacher chat">
+          <p class="placeholder">Type instead of speaking — the teacher sees this live.</p>
+        </div>
+        <form id="studentChatForm" class="qa-form">
+          <input type="text" id="studentChatInput" placeholder="Message your teacher…" autocomplete="off" />
+          <button type="submit" class="btn btn-primary">Send to Teacher</button>
+        </form>
       </div>
-      <form id="studentChatForm" class="qa-form">
-        <input type="text" id="studentChatInput" placeholder="Type a message…" autocomplete="off" />
-        <button type="submit" class="btn btn-primary">Send</button>
-      </form>
     </section>
 
     <section class="panel panel-study">

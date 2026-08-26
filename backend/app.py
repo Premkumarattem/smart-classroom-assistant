@@ -267,7 +267,8 @@ def init_db():
             transcript TEXT NOT NULL DEFAULT '',
             ai_notes TEXT,
             recording_path TEXT,
-            status TEXT NOT NULL DEFAULT 'active'
+            status TEXT NOT NULL DEFAULT 'active',
+            lecture_language TEXT NOT NULL DEFAULT 'english'
         )
         """
     )
@@ -315,6 +316,20 @@ def init_db():
             college_name TEXT NOT NULL DEFAULT '',
             event_type TEXT NOT NULL,
             created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS quiz_results (
+            id {PK_TYPE},
+            session_id INTEGER,
+            student_id INTEGER,
+            student_name TEXT NOT NULL,
+            subject TEXT NOT NULL DEFAULT '',
+            score INTEGER NOT NULL,
+            total INTEGER NOT NULL,
+            submitted_at TEXT NOT NULL
         )
         """
     )
@@ -590,6 +605,7 @@ class StartClassRequest(BaseModel):
     teacher_name: str
     college_name: str = ""
     subject: str
+    lecture_language: str = "english"
 
 
 @app.post("/api/classes/start")
@@ -597,11 +613,12 @@ def start_class(req: StartClassRequest, authorization: Optional[str] = Header(No
     user = require_user(authorization)
     if user["role"] != "teacher":
         raise HTTPException(status_code=403, detail="Only teacher accounts can start a class.")
+    lecture_language = req.lecture_language if req.lecture_language in VALID_LANGUAGES else "english"
     conn = get_db()
     insert_sql = """INSERT INTO class_sessions
-           (teacher_id, teacher_name, college_name, subject, session_date, start_time, status)
-           VALUES (?, ?, ?, ?, ?, ?, 'active')"""
-    params = (req.teacher_id, req.teacher_name, req.college_name, req.subject, today_str(), now_iso())
+           (teacher_id, teacher_name, college_name, subject, session_date, start_time, status, lecture_language)
+           VALUES (?, ?, ?, ?, ?, ?, 'active', ?)"""
+    params = (req.teacher_id, req.teacher_name, req.college_name, req.subject, today_str(), now_iso(), lecture_language)
     if USE_POSTGRES:
         # Postgres gives back the new row's id directly via RETURNING —
         # no separate lookup needed (and last_insert_rowid() doesn't exist there).
@@ -736,7 +753,7 @@ def list_classes(
     college_name: Optional[str] = None,
     status: Optional[str] = None,
 ):
-    query = "SELECT id, teacher_name, college_name, subject, session_date, start_time, end_time, status, recording_path FROM class_sessions WHERE 1=1"
+    query = "SELECT id, teacher_name, college_name, subject, session_date, start_time, end_time, status, recording_path, lecture_language FROM class_sessions WHERE 1=1"
     params = []
     if subject:
         query += " AND subject LIKE ?"
@@ -1024,6 +1041,56 @@ def generate_quiz(req: QuizRequest):
 
 
 # ---------------------------------------------------------------
+# Quiz results — a student's score is saved once they submit, and shows
+# up live on the teacher's dashboard. Previously the quiz was graded
+# entirely in the browser with no record of it anywhere — this closes
+# that gap.
+# ---------------------------------------------------------------
+class QuizResultRequest(BaseModel):
+    session_id: Optional[int] = None
+    subject: str = ""
+    score: int
+    total: int
+
+
+@app.post("/api/quiz-results")
+def save_quiz_result(req: QuizResultRequest, authorization: Optional[str] = Header(None)):
+    user = require_user(authorization)
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO quiz_results (session_id, student_id, student_name, subject, score, total, submitted_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (req.session_id, user["id"], user["name"], req.subject, req.score, req.total, now_iso()),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@app.get("/api/quiz-results")
+def list_quiz_results(college_name: str, session_id: Optional[int] = None):
+    conn = get_db()
+    if session_id:
+        rows = conn.execute(
+            "SELECT qr.student_name, qr.subject, qr.score, qr.total, qr.submitted_at "
+            "FROM quiz_results qr WHERE qr.session_id = ? ORDER BY qr.submitted_at DESC",
+            (session_id,),
+        ).fetchall()
+    else:
+        # Join through class_sessions so results are scoped to this teacher's
+        # college, not every quiz result system-wide.
+        rows = conn.execute(
+            "SELECT qr.student_name, qr.subject, qr.score, qr.total, qr.submitted_at "
+            "FROM quiz_results qr "
+            "JOIN class_sessions cs ON qr.session_id = cs.id "
+            "WHERE cs.college_name = ? ORDER BY qr.submitted_at DESC LIMIT 50",
+            (college_name,),
+        ).fetchall()
+    conn.close()
+    return {"results": [dict(r) for r in rows]}
+
+
+# ---------------------------------------------------------------
 # AI Mind Map — a simple topic -> subtopics outline from the transcript
 # ---------------------------------------------------------------
 class MindMapRequest(BaseModel):
@@ -1121,6 +1188,45 @@ def language_instruction(language: str) -> str:
     if lang == "English":
         return ""
     return f" Write your entire response in {lang}, not English."
+
+
+# ---------------------------------------------------------------
+# Live caption translation — a student can pick a caption language
+# independent of whichever language the teacher is actually lecturing
+# in. Only called when the two differ (the frontend skips this entirely
+# when they match, so English-to-English captions never pay for a
+# translation round trip).
+# ---------------------------------------------------------------
+class TranslateCaptionRequest(BaseModel):
+    text: str
+    source_language: str = "english"
+    target_language: str = "english"
+
+
+@app.post("/api/translate-caption")
+def translate_caption(req: TranslateCaptionRequest):
+    if not req.text.strip() or req.source_language == req.target_language:
+        return {"translated": req.text}
+    source = LANGUAGE_NAMES.get(req.source_language, "English")
+    target = LANGUAGE_NAMES.get(req.target_language, "English")
+    try:
+        translated = call_llm(
+            system=(
+                f"Translate the following single sentence, spoken live in a classroom, from "
+                f"{source} to {target}. Stay as close and literal to the original wording as "
+                f"natural grammar in {target} allows — this is for a live caption, so a student "
+                f"is reading it in real time and needs the same meaning and level of detail as "
+                f"the original, not a summary or a loose paraphrase. "
+                f"Reply with ONLY the translated sentence — no notes, no explanation, no quotes."
+            ),
+            user_message=req.text,
+            max_tokens=200,
+        )
+        return {"translated": translated.strip()}
+    except Exception:
+        # A live caption that briefly shows the original language beats one
+        # that goes blank or throws an error on screen — fail soft, not hard.
+        return {"translated": req.text}
 
 
 class SummarizeRequest(BaseModel):

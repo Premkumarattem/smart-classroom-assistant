@@ -1,21 +1,25 @@
 :root {
-  --board:        #0F0B22;
-  --board-panel:  #1B1438;
-  --board-panel-2:#251C4A;
-  --chalk:        #F3EEFF;
-  --chalk-dim:    #A79BC9;
-  --amber:        #C13CFF;
-  --teal:         #22E6D0;
-  --alert:        #FF3B6B;
-  --rule:         rgba(196, 181, 253, 0.16);
+  /* T4PF / Capgemini official brand palette */
+  --board:        #121A38; /* Capgemini Dark Blue */
+  --board-panel:  #1C2650;
+  --board-panel-2:#26326A;
+  --chalk:        #F4F6FB; /* near White */
+  --chalk-dim:    #A9AFCE; /* Lilac, dimmed for readability */
+  --amber:        #FEB100; /* Brand Yellow — primary accent/CTA */
+  --teal:         #00828E; /* Brand Teal — secondary accent */
+  --alert:        #FF816E; /* Brand Orange — urgent/emergency */
+  --purple:       #71609E; /* Brand Purple — used for the AI Chat identity */
+  --turquoise:    #00D6D0; /* Brand Turquoise — used for highlights/success */
+  --capgemini-blue: #00A9E0; /* Brand light blue, from the guideline's top swatch */
+  --rule:         rgba(212, 211, 241, 0.18); /* Lilac, low opacity, for borders */
 
   --font-display: 'Fraunces', serif;
   --font-body:    'Inter', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 
-  /* Neon glow — used sparingly, on primary buttons and live/recording indicators */
-  --glow-violet: 0 0 18px rgba(193, 60, 255, 0.55), 0 0 4px rgba(193, 60, 255, 0.8);
-  --glow-teal:   0 0 18px rgba(34, 230, 208, 0.5), 0 0 4px rgba(34, 230, 208, 0.75);
+  /* Brand-colored glow — used sparingly, on primary buttons and live/recording indicators */
+  --glow-violet: 0 0 18px rgba(254, 177, 0, 0.5), 0 0 4px rgba(254, 177, 0, 0.75);
+  --glow-teal:   0 0 18px rgba(0, 130, 142, 0.55), 0 0 4px rgba(0, 130, 142, 0.8);
 }
 
 * { box-sizing: border-box; }
@@ -81,7 +85,7 @@ body::after {
   padding: 28px 40px 22px;
   border-bottom: 1px solid var(--rule);
   overflow: hidden;
-  background: rgba(15, 11, 34, 0.55);
+  background: rgba(18, 26, 56, 0.55);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -90,10 +94,10 @@ body::after {
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(1px 1px at 10% 30%, rgba(241,237,226,0.06), transparent),
-    radial-gradient(1px 1px at 80% 60%, rgba(241,237,226,0.05), transparent),
-    radial-gradient(1.5px 1.5px at 45% 80%, rgba(241,237,226,0.04), transparent),
-    radial-gradient(1px 1px at 65% 20%, rgba(241,237,226,0.05), transparent);
+    radial-gradient(1px 1px at 10% 30%, rgba(244,246,251,0.06), transparent),
+    radial-gradient(1px 1px at 80% 60%, rgba(244,246,251,0.05), transparent),
+    radial-gradient(1.5px 1.5px at 45% 80%, rgba(244,246,251,0.04), transparent),
+    radial-gradient(1px 1px at 65% 20%, rgba(244,246,251,0.05), transparent);
   pointer-events: none;
 }
 
@@ -158,9 +162,9 @@ body::after {
 .dot-status.live { color: var(--alert); }
 
 @keyframes pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(255,59,107,0.6); }
-  70%  { box-shadow: 0 0 0 8px rgba(255,59,107,0); }
-  100% { box-shadow: 0 0 0 0 rgba(255,59,107,0); }
+  0%   { box-shadow: 0 0 0 0 rgba(255,129,110,0.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(255,129,110,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,129,110,0); }
 }
 
 /* ---------- Board / grid ---------- */
@@ -177,10 +181,10 @@ body::after {
 }
 
 .panel {
-  background: rgba(27, 20, 56, 0.55);
+  background: rgba(28, 38, 80, 0.55);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(196, 181, 253, 0.14);
+  border: 1px solid rgba(212, 211, 241, 0.14);
   padding: 22px 24px 26px;
   display: flex;
   flex-direction: column;
@@ -189,8 +193,8 @@ body::after {
 }
 
 .panel:hover {
-  border-color: rgba(193, 60, 255, 0.35);
-  box-shadow: 0 0 30px rgba(193, 60, 255, 0.08);
+  border-color: rgba(254, 177, 0, 0.35);
+  box-shadow: 0 0 30px rgba(254, 177, 0, 0.08);
 }
 
 .panel-head {
@@ -232,14 +236,14 @@ body::after {
 
 .btn-primary {
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   box-shadow: var(--glow-violet);
   transition: opacity 0.15s ease, transform 0.15s ease, box-shadow 0.25s ease;
 }
 .btn-primary:hover {
   opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 0 26px rgba(193, 60, 255, 0.7), 0 0 6px rgba(193, 60, 255, 0.9);
+  box-shadow: 0 0 26px rgba(254, 177, 0, 0.7), 0 0 6px rgba(254, 177, 0, 0.9);
 }
 .btn-primary.active {
   background: var(--alert);
@@ -275,7 +279,7 @@ body::after {
   position: relative;
   width: 100%;
   aspect-ratio: 4/3;
-  background: #0A0718;
+  background: #0A0E20;
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 14px;
@@ -523,13 +527,13 @@ body::after {
   position: relative;
   width: 100%;
   max-width: 440px;
-  background: rgba(27, 20, 56, 0.6);
+  background: rgba(28, 38, 80, 0.6);
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
-  border: 1px solid rgba(196, 181, 253, 0.18);
+  border: 1px solid rgba(212, 211, 241, 0.18);
   border-radius: 14px;
   padding: 36px 34px 30px;
-  box-shadow: 0 0 60px rgba(193, 60, 255, 0.12), 0 20px 60px rgba(0,0,0,0.4);
+  box-shadow: 0 0 60px rgba(254, 177, 0, 0.12), 0 20px 60px rgba(0,0,0,0.4);
 }
 
 .auth-title {
@@ -631,7 +635,7 @@ body::after {
 
 .chip:has(input:checked) {
   border-color: var(--amber);
-  background: rgba(193, 60, 255, 0.12);
+  background: rgba(254, 177, 0, 0.12);
 }
 
 .chip input { accent-color: var(--amber); }
@@ -677,7 +681,7 @@ body::after {
   border-radius: 50%;
   border: 1px solid var(--rule);
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   font-size: 18px;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0,0,0,0.35);
@@ -821,7 +825,7 @@ body.big-targets .a11y-toggle {
 }
 
 @keyframes recognizedFlash {
-  0%   { background: rgba(34, 230, 208, 0.35); }
+  0%   { background: rgba(0, 130, 142, 0.35); }
   100% { background: transparent; }
 }
 
@@ -840,7 +844,7 @@ body.big-targets .a11y-toggle {
 }
 
 .btn-explain:hover {
-  background: rgba(193, 60, 255, 0.1);
+  background: rgba(254, 177, 0, 0.1);
 }
 
 .btn-explain.loading {
@@ -849,7 +853,7 @@ body.big-targets .a11y-toggle {
 }
 
 .explain-card {
-  background: rgba(193, 60, 255, 0.08);
+  background: rgba(254, 177, 0, 0.08);
   border: 1px solid var(--amber);
   border-radius: 8px;
   padding: 12px 14px;
@@ -907,7 +911,7 @@ body.dyslexia-font .explain-card p {
 
 .role-tab.active {
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
 }
 
 /* =================================================================
@@ -949,7 +953,7 @@ body.dyslexia-font .explain-card p {
    Teacher dashboard
    ================================================================= */
 .board-teacher {
-  grid-template-columns: 380px 1fr 340px;
+  grid-template-columns: 340px 1fr 300px 300px;
 }
 
 .active-banner {
@@ -966,7 +970,7 @@ body.dyslexia-font .explain-card p {
   font-size: 11px;
   color: var(--teal);
   background: var(--board-panel);
-  border: 1px solid rgba(34, 230, 208, 0.35);
+  border: 1px solid rgba(0, 130, 142, 0.35);
   border-radius: 20px;
   padding: 4px 11px;
   box-shadow: var(--glow-teal);
@@ -1007,7 +1011,7 @@ body.dyslexia-font .explain-card p {
 
 .raise-list li.urgent {
   border-color: var(--alert);
-  background: rgba(255, 59, 107, 0.12);
+  background: rgba(255, 129, 110, 0.12);
   animation: pulse 1.4s infinite;
 }
 
@@ -1081,7 +1085,7 @@ body.dyslexia-font .explain-card p {
 .cam-preview-wrap {
   width: 100%;
   aspect-ratio: 16/9;
-  background: #0A0718;
+  background: #0A0E20;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--rule);
@@ -1117,7 +1121,7 @@ body.dyslexia-font .explain-card p {
 }
 
 .recording-link:hover {
-  background: rgba(34, 230, 208, 0.15);
+  background: rgba(0, 130, 142, 0.15);
 }
 
 /* =================================================================
@@ -1159,7 +1163,7 @@ body.dyslexia-font .explain-card p {
 
 .theme-swatch.active { border-color: var(--amber); }
 
-.theme-default { background: linear-gradient(135deg, #0F0B22 50%, #F3EEFF 50%); }
+.theme-default { background: linear-gradient(135deg, #121A38 50%, #F4F6FB 50%); }
 .theme-bw { background: linear-gradient(135deg, #000000 50%, #FFFFFF 50%); }
 .theme-yb { background: linear-gradient(135deg, #000000 50%, #FFD400 50%); }
 .theme-blue { background: linear-gradient(135deg, #0B3D91 50%, #FFFFFF 50%); }
@@ -1183,7 +1187,7 @@ body.dyslexia-font .explain-card p {
 
 .fs-btn.active {
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   border-color: var(--amber);
 }
 
@@ -1292,7 +1296,7 @@ body.magnifier-active { cursor: none; }
   opacity: 1;
   border-color: var(--amber);
   color: var(--chalk);
-  box-shadow: 0 0 12px rgba(193, 60, 255, 0.35);
+  box-shadow: 0 0 12px rgba(254, 177, 0, 0.35);
 }
 
 /* =================================================================
@@ -1333,7 +1337,7 @@ body.magnifier-active { cursor: none; }
 
 .mm-topic {
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 14px;
@@ -1386,7 +1390,7 @@ body.magnifier-active { cursor: none; }
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   padding: 2px 6px;
   border-radius: 4px;
   margin-left: 6px;
@@ -1430,7 +1434,7 @@ body.magnifier-active { cursor: none; }
 
 .sign-card.active {
   border-color: var(--amber);
-  background: rgba(193, 60, 255, 0.15);
+  background: rgba(254, 177, 0, 0.15);
   animation: recognizedFlash 2s ease;
 }
 
@@ -1472,7 +1476,7 @@ body.magnifier-active { cursor: none; }
   left: 12px;
   z-index: 1000;
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   padding: 10px 16px;
   border-radius: 6px;
   font-family: var(--font-body);
@@ -1507,7 +1511,7 @@ main:focus {
   position: relative;
   width: 100%;
   aspect-ratio: 16/9;
-  background: #0A0718;
+  background: #0A0E20;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--rule);
@@ -1533,7 +1537,7 @@ main:focus {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--chalk-dim);
-  background: rgba(15, 34, 29, 0.9);
+  background: rgba(18, 26, 56, 0.9);
 }
 
 /* =================================================================
@@ -1618,7 +1622,7 @@ main:focus {
 
 .transcript-box mark {
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   border-radius: 2px;
   padding: 0 2px;
 }
@@ -1661,12 +1665,12 @@ main:focus {
 .quiz-question .q-option:hover { background: var(--board-panel-2); }
 
 .quiz-question .q-option.correct {
-  background: rgba(34, 230, 208, 0.15);
+  background: rgba(0, 130, 142, 0.15);
   color: var(--teal);
 }
 
 .quiz-question .q-option.incorrect {
-  background: rgba(255, 59, 107, 0.15);
+  background: rgba(255, 129, 110, 0.15);
   color: var(--alert);
 }
 
@@ -1812,7 +1816,7 @@ body.text-large .caption-overlay,
 }
 .speed-btn.active {
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   border-color: var(--amber);
 }
 
@@ -1828,6 +1832,141 @@ body.text-large .caption-overlay,
 }
 .cap-btn.active {
   background: var(--amber);
-  color: #1A0F2E;
+  color: #121A38;
   border-color: var(--amber);
+}
+
+/* =================================================================
+   AI Chat vs Teacher Chat — clear visual distinction, not just labels
+   ================================================================= */
+.chat-block { margin-bottom: 18px; }
+
+.mini-head-ai, .mini-head-teacher {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chat-sub {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--chalk-dim);
+}
+
+.chat-block-ai .qa-thread {
+  border-left: 3px solid var(--purple);
+}
+.chat-block-ai .mini-head-ai { color: var(--purple); }
+
+.chat-block-teacher .qa-thread {
+  border-left: 3px solid var(--teal);
+}
+.chat-block-teacher .mini-head-teacher { color: var(--teal); }
+
+/* =================================================================
+   Teacher: Class Timetable + Quiz/GK Results
+   ================================================================= */
+.timetable-list, .quiz-results-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.timetable-list li, .quiz-results-list li {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 7px;
+  font-size: 12px;
+}
+
+.timetable-list li.placeholder, .quiz-results-list li.placeholder {
+  font-style: italic;
+  color: var(--chalk-dim);
+  border-style: dashed;
+}
+
+.tt-subject {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--amber);
+  margin-bottom: 2px;
+}
+
+.tt-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--chalk-dim);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tt-status-active {
+  color: var(--turquoise);
+  font-weight: 600;
+}
+
+.qr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qr-name {
+  font-weight: 600;
+  color: var(--chalk);
+}
+
+.qr-subject {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--chalk-dim);
+}
+
+.qr-score {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.qr-score.high { color: var(--turquoise); }
+.qr-score.mid { color: var(--amber); }
+.qr-score.low { color: var(--alert); }
+
+/* =================================================================
+   Caption language selector (live translation, independent of the
+   teacher's spoken lecture language)
+   ================================================================= */
+.caption-lang-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--chalk-dim);
+  flex-wrap: wrap;
+}
+
+.caption-lang-row select {
+  background: var(--board-panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 9px;
+  color: var(--chalk);
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+.caption-lang-note {
+  font-style: italic;
+  color: var(--turquoise);
 }
