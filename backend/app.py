@@ -334,6 +334,23 @@ def init_db():
         """
     )
     conn.commit()
+
+    # ---- Lightweight column migration for class_sessions ----
+    # These two columns were added after the original CREATE TABLE shipped,
+    # so existing databases won't have them yet. ALTER TABLE ADD COLUMN
+    # fails if the column already exists (both SQLite and Postgres raise
+    # here) — that's expected on every restart after the first, so it's
+    # safe to just swallow the error.
+    for column_sql in (
+        "ALTER TABLE class_sessions ADD COLUMN mic_muted INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE class_sessions ADD COLUMN camera_off INTEGER NOT NULL DEFAULT 0",
+    ):
+        try:
+            conn.execute(column_sql)
+            conn.commit()
+        except Exception:
+            pass  # column already exists from a previous run
+
     conn.close()
 
 
@@ -561,6 +578,12 @@ manager = ConnectionManager()
 # never broadcast to everyone (unlike transcript/hand_raise/chat above).
 SIGNALING_TYPES = {"video_join", "webrtc_offer", "webrtc_answer", "webrtc_ice"}
 
+# Sent by the teacher when they toggle mic/camera during a live class.
+# Broadcast to everyone (so students' UI can show a "teacher muted" badge)
+# and persisted on the session row so the college admin dashboard and any
+# later lookup can see the class's current/last av state.
+AV_STATE_TYPE = "av_state"
+
 
 @app.websocket("/ws/class/{session_id}")
 async def class_websocket(
@@ -578,6 +601,25 @@ async def class_websocket(
                 msg = json.loads(raw)
             except json.JSONDecodeError:
                 continue
+
+            if msg.get("type") == AV_STATE_TYPE and role == "teacher":
+                mic_muted = 1 if msg.get("mic_muted") else 0
+                camera_off = 1 if msg.get("camera_off") else 0
+                try:
+                    conn = get_db()
+                    conn.execute(
+                        "UPDATE class_sessions SET mic_muted = ?, camera_off = ? WHERE id = ?",
+                        (mic_muted, camera_off, session_id),
+                    )
+                    conn.commit()
+                    conn.close()
+                except Exception:
+                    pass  # non-critical — live broadcast below still reaches students either way
+                await manager.broadcast(session_id, {
+                    "type": AV_STATE_TYPE, "mic_muted": bool(mic_muted), "camera_off": bool(camera_off),
+                })
+                continue
+
             if msg.get("type") not in SIGNALING_TYPES:
                 continue  # this connection doesn't send anything else meaningful
 
@@ -727,7 +769,7 @@ def stop_class(session_id: int, authorization: Optional[str] = Header(None)):
     final_recording_path = try_convert_to_mp4(row["recording_path"])
 
     conn.execute(
-        "UPDATE class_sessions SET end_time = ?, ai_notes = ?, status = 'ended', recording_path = ? WHERE id = ?",
+        "UPDATE class_sessions SET end_time = ?, ai_notes = ?, status = 'ended', recording_path = ?, mic_muted = 0, camera_off = 0 WHERE id = ?",
         (now_iso(), ai_notes, final_recording_path, session_id),
     )
     conn.commit()
@@ -753,7 +795,7 @@ def list_classes(
     college_name: Optional[str] = None,
     status: Optional[str] = None,
 ):
-    query = "SELECT id, teacher_name, college_name, subject, session_date, start_time, end_time, status, recording_path, lecture_language FROM class_sessions WHERE 1=1"
+    query = "SELECT id, teacher_name, college_name, subject, session_date, start_time, end_time, status, recording_path, lecture_language, mic_muted, camera_off FROM class_sessions WHERE 1=1"
     params = []
     if subject:
         query += " AND subject LIKE ?"

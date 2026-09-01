@@ -145,6 +145,10 @@
         <div class="cam-preview-wrap">
           <video id="teacherCamPreview" autoplay muted playsinline></video>
         </div>
+        <div class="av-controls-row">
+          <button id="toggleMicBtn" type="button" class="btn btn-ghost" aria-pressed="false" aria-label="Mute microphone">🎤 Mute</button>
+          <button id="toggleCamBtn" type="button" class="btn btn-ghost" aria-pressed="false" aria-label="Turn camera off">📷 Camera Off</button>
+        </div>
         <div class="transcript-box" id="transcriptBoxTeacher" aria-live="polite">
           <p class="placeholder">Live transcript will appear here…</p>
         </div>
@@ -227,6 +231,7 @@
         <video id="liveVideoStudent" autoplay playsinline></video>
         <p class="live-video-status hidden" id="liveVideoStatus">No class is live right now.</p>
         <p class="caption-overlay hidden" id="captionOverlay" aria-live="polite"></p>
+        <p class="av-state-overlay hidden" id="avStateOverlay" aria-live="polite"></p>
       </div>
 
       <div class="transcript-search">

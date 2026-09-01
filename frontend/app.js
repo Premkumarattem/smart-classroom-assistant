@@ -637,6 +637,7 @@ document.getElementById("startClassBtn").addEventListener("click", async () => {
   teacherFullTranscript = "";
 
   startTeacherSpeechRecognition(LANG_MAP[lectureLanguage] || "en-US");
+  resetAvControls();
   await startTeacherRecording();  // must finish before students can connect and request video
   connectTeacherWebSocket(teacherSessionId);
   handRaisePoll = setInterval(pollHandRaises, 8000);   // safety net — WS handles instant updates
@@ -815,6 +816,69 @@ function stopTeacherCamPreview() {
     teacherCamStream = null;
   }
 }
+
+// ---- Mic mute / camera off — toggles the SAME tracks used by the local
+// preview, the recording, and every student's live WebRTC feed, so muting
+// here mutes everywhere at once (no separate "mute for students" state to
+// get out of sync). Live captions are unaffected: they come from the
+// browser's own Web Speech API listening to the system mic, not from this
+// stream, so captions keep working even with the mic muted — matching how
+// most video-call tools keep transcription running through a mute.
+const toggleMicBtn = document.getElementById("toggleMicBtn");
+const toggleCamBtn = document.getElementById("toggleCamBtn");
+
+toggleMicBtn.addEventListener("click", () => {
+  if (!teacherCamStream) return;
+  const audioTracks = teacherCamStream.getAudioTracks();
+  if (!audioTracks.length) return;
+  const nowMuted = audioTracks[0].enabled; // currently enabled -> clicking mutes it
+  audioTracks.forEach((t) => { t.enabled = !nowMuted; });
+  toggleMicBtn.classList.toggle("active", nowMuted);
+  toggleMicBtn.setAttribute("aria-pressed", String(nowMuted));
+  toggleMicBtn.setAttribute("aria-label", nowMuted ? "Unmute microphone" : "Mute microphone");
+  toggleMicBtn.textContent = nowMuted ? "🎤 Muted" : "🎤 Mute";
+  broadcastAvState();
+});
+
+toggleCamBtn.addEventListener("click", () => {
+  if (!teacherCamStream) return;
+  const videoTracks = teacherCamStream.getVideoTracks();
+  if (!videoTracks.length) return;
+  const nowOff = videoTracks[0].enabled; // currently enabled -> clicking turns it off
+  videoTracks.forEach((t) => { t.enabled = !nowOff; });
+  toggleCamBtn.classList.toggle("active", nowOff);
+  toggleCamBtn.setAttribute("aria-pressed", String(nowOff));
+  toggleCamBtn.setAttribute("aria-label", nowOff ? "Turn camera on" : "Turn camera off");
+  toggleCamBtn.textContent = nowOff ? "📷 Camera Off" : "📷 Turn Camera Off";
+  broadcastAvState();
+});
+
+// Tells the backend (for the session record + college admin dashboard) and
+// every connected student, over the same WebSocket already used for chat/
+// hand-raise/WebRTC signaling, that the mic/camera state just changed.
+function broadcastAvState() {
+  if (!teacherWS || teacherWS.readyState !== WebSocket.OPEN) return;
+  teacherWS.send(JSON.stringify({
+    type: "av_state",
+    mic_muted: toggleMicBtn.classList.contains("active"),
+    camera_off: toggleCamBtn.classList.contains("active"),
+  }));
+}
+
+// Reset mute/camera-off UI state whenever a fresh class starts, so a
+// previous class's mute state can't carry over and silently confuse
+// students in the next session.
+function resetAvControls() {
+  toggleMicBtn.classList.remove("active");
+  toggleMicBtn.setAttribute("aria-pressed", "false");
+  toggleMicBtn.setAttribute("aria-label", "Mute microphone");
+  toggleMicBtn.textContent = "🎤 Mute";
+  toggleCamBtn.classList.remove("active");
+  toggleCamBtn.setAttribute("aria-pressed", "false");
+  toggleCamBtn.setAttribute("aria-label", "Turn camera off");
+  toggleCamBtn.textContent = "📷 Camera Off";
+}
+
 
 let teacherRecordingPath = null;
 
@@ -1008,6 +1072,10 @@ async function pollForActiveClass() {
         studentFullTranscript = "";
         document.getElementById("noActiveClassMsg").textContent = `Live now: ${active.subject} — ${active.teacher_name}`;
         document.getElementById("transcriptBoxStudent").innerHTML = '<p class="placeholder">Listening for captions…</p>';
+        // Seed the mute/camera-off indicator from whatever state the teacher
+        // was already in — a student who joins mid-mute shouldn't have to
+        // wait for the next toggle to find out.
+        updateTeacherAvIndicator(!!active.mic_muted, !!active.camera_off);
         if (studentTranscriptPoll) clearInterval(studentTranscriptPoll);
         studentTranscriptPoll = setInterval(pollStudentTranscript, 8000); // safety net — WS handles instant updates
         if (studentChatPoll) clearInterval(studentChatPoll);
@@ -1022,6 +1090,7 @@ async function pollForActiveClass() {
       clearInterval(studentChatPoll);
       closeStudentWebSocket();
       document.getElementById("noActiveClassMsg").textContent = "No class is live right now for your college. This checks every few seconds.";
+      updateTeacherAvIndicator(false, false);
       loadPastRecordings(); // the class that just ended should show up here now
     }
   } catch (e) { /* silent — keep trying */ }
@@ -1057,6 +1126,7 @@ function connectStudentWebSocket(sessionId) {
     if (msg.type === "chat") pollStudentChat();
     if (msg.type === "webrtc_offer") await handleTeacherOffer(msg);
     if (msg.type === "webrtc_ice" && msg.candidate) await handleTeacherIce(msg);
+    if (msg.type === "av_state") updateTeacherAvIndicator(msg.mic_muted, msg.camera_off);
   };
   studentWS.onerror = () => console.warn("Student WebSocket error — falling back to polling only.");
 }
@@ -1103,6 +1173,21 @@ function setLiveVideoStatus(text) {
   if (!el) return;
   if (text) { el.textContent = text; el.classList.remove("hidden"); }
   else { el.classList.add("hidden"); }
+}
+
+// Shown over the live video when the teacher mutes their mic or turns off
+// their camera, so students (especially deaf/hard-of-hearing ones relying
+// on lip-reading + captions together) know it's an intentional mute, not
+// a connection problem — captions themselves keep working either way.
+function updateTeacherAvIndicator(micMuted, cameraOff) {
+  const el = document.getElementById("avStateOverlay");
+  if (!el) return;
+  if (!micMuted && !cameraOff) { el.classList.add("hidden"); el.textContent = ""; return; }
+  const parts = [];
+  if (micMuted) parts.push("🔇 Teacher's mic is muted");
+  if (cameraOff) parts.push("📷 Teacher's camera is off");
+  el.textContent = parts.join(" · ");
+  el.classList.remove("hidden");
 }
 
 let captionClearTimer = null;
@@ -1354,8 +1439,14 @@ async function loadCollegeClasses() {
       const li = document.createElement("li");
       const start = new Date(c.start_time).toLocaleTimeString();
       const end = c.end_time ? new Date(c.end_time).toLocaleTimeString() : "in progress";
+      // Mute/camera-off badges only mean anything while the class is still
+      // live — once it's ended these flags reflect whatever state it was
+      // in at the last toggle, which isn't relevant to an admin browsing history.
+      const avBadges = c.status === "active"
+        ? `${c.mic_muted ? '<span class="av-badge av-badge-muted">🔇 mic muted</span>' : ""}${c.camera_off ? '<span class="av-badge av-badge-muted">📷 camera off</span>' : ""}`
+        : "";
       li.innerHTML = `<div class="class-title">${c.subject}</div>
-        <div class="class-meta">${c.teacher_name} · ${c.session_date} · ${start}–${end} · ${c.status}</div>
+        <div class="class-meta">${c.teacher_name} · ${c.session_date} · ${start}–${end} · ${c.status} ${avBadges}</div>
         ${c.recording_path ? `<a class="recording-link" href="${API_BASE}${c.recording_path}" target="_blank" rel="noopener">🎥 Watch recording</a>` : ""}`;
       list.appendChild(li);
     });

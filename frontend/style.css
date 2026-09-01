@@ -1104,6 +1104,35 @@ body.dyslexia-font .explain-card p {
   margin-top: 14px;
 }
 
+/* Mic/camera mute controls shown under the live preview while a class is active */
+.av-controls-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.av-controls-row .btn {
+  flex: 1;
+}
+.av-controls-row .btn.active {
+  background: var(--alert);
+  color: var(--chalk);
+  border-color: var(--alert);
+}
+
+.av-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.av-badge-muted {
+  background: rgba(255, 129, 110, 0.18);
+  color: var(--alert);
+  border: 1px solid rgba(255, 129, 110, 0.4);
+}
+
 #recordingPlayback video {
   width: 100%;
   border-radius: 8px;
@@ -1805,6 +1834,26 @@ body.text-large .caption-overlay,
 .caption-overlay.caption-large { font-size: 19px; }
 .caption-overlay.caption-xlarge { font-size: 23px; }
 .caption-overlay.caption-small { font-size: 12px; }
+
+/* Teacher mute/camera-off indicator — sits at the TOP of the video so it
+   never overlaps the caption overlay, which sits at the bottom. */
+.av-state-overlay {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 5%;
+  margin: 0;
+  text-align: center;
+  background: rgba(255, 129, 110, 0.9);
+  color: #121A38;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 6px 12px;
+  border-radius: 6px;
+  pointer-events: none;
+}
 
 .speed-btn {
   flex: 1;
