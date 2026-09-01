@@ -1020,10 +1020,26 @@ let studentLastChatId = 0;
 let lastRenderedTranscriptLen = 0;
 
 function startStudentPolling() {
+  updateWelcomeHero();
   pollForActiveClass();
   studentClassPoll = setInterval(pollForActiveClass, 4000);
   loadPastRecordings();
+  loadRecentClassesTable();
 }
+
+function updateWelcomeHero() {
+  const heading = document.getElementById("dashWelcomeHeading");
+  const sub = document.getElementById("dashWelcomeSub");
+  if (!heading || !currentUser) return;
+  heading.textContent = `Welcome, ${currentUser.name}!`;
+  sub.textContent = studentSessionId
+    ? "Continue your learning in your active class."
+    : "Your smart classroom is ready — we'll let you know the moment a class goes live.";
+}
+
+document.getElementById("joinLiveClassBtn")?.addEventListener("click", () => {
+  document.getElementById("panelTranscript")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 async function loadPastRecordings() {
   const list = document.getElementById("pastRecordingsList");
@@ -1053,7 +1069,54 @@ async function loadPastRecordings() {
     list.innerHTML = `<li class="placeholder">Couldn't reach the backend at ${API_BASE}.</li>`;
   }
 }
-document.getElementById("refreshRecordingsBtn")?.addEventListener("click", loadPastRecordings);
+document.getElementById("refreshRecordingsBtn")?.addEventListener("click", () => {
+  loadPastRecordings();
+  loadRecentClassesTable();
+});
+
+// ---------- "Your Classes" table: every class at this college, newest first ----------
+async function loadRecentClassesTable() {
+  const tbody = document.getElementById("recentClassesTableBody");
+  if (!tbody || !currentUser) return;
+  try {
+    const params = new URLSearchParams();
+    if (currentUser.college_name) params.set("college_name", currentUser.college_name);
+    const res = await fetch(`${API_BASE}/api/classes?${params.toString()}`);
+    const data = await res.json();
+    const classes = (data.classes || []).slice(0, 12);
+    if (!classes.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="placeholder">No classes at your college yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = "";
+    classes.forEach((c) => {
+      const tr = document.createElement("tr");
+      const isLive = c.status === "active";
+      const when = `${c.session_date || ""}${c.start_time ? ", " + c.start_time : ""}`;
+      const statusHtml = isLive
+        ? '<span class="class-status-pill status-live">● Live</span>'
+        : '<span class="class-status-pill status-ended">Ended</span>';
+      const actionHtml = isLive
+        ? '<button class="btn btn-primary btn-small join-row-btn">Join</button>'
+        : (c.recording_path ? `<a class="rec-watch-link" href="${API_BASE}${c.recording_path}" target="_blank" rel="noopener">🎥 Watch</a>` : "");
+      tr.innerHTML = `
+        <td>${c.subject || "—"}</td>
+        <td>${c.teacher_name || "—"}</td>
+        <td>${when}</td>
+        <td>${statusHtml}</td>
+        <td>${actionHtml}</td>
+      `;
+      if (isLive) {
+        tr.querySelector(".join-row-btn").addEventListener("click", () => {
+          document.getElementById("panelTranscript")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="5" class="placeholder">Couldn't reach the backend at ${API_BASE}.</td></tr>`;
+  }
+}
 
 async function pollForActiveClass() {
   try {
@@ -1071,6 +1134,16 @@ async function pollForActiveClass() {
         lastRenderedTranscriptLen = 0;
         studentFullTranscript = "";
         document.getElementById("noActiveClassMsg").textContent = `Live now: ${active.subject} — ${active.teacher_name}`;
+        document.getElementById("noActiveClassMsg").classList.add("hidden");
+        const liveCard = document.getElementById("liveClassCard");
+        if (liveCard) {
+          liveCard.classList.remove("hidden");
+          document.getElementById("liveClassTitle").textContent = active.subject || "Live Class";
+          document.getElementById("liveClassMeta").textContent =
+            `👤 ${active.teacher_name || "Teacher"}${active.start_time ? " · ⏰ " + active.start_time : ""}`;
+        }
+        updateWelcomeHero();
+        loadRecentClassesTable();
         document.getElementById("transcriptBoxStudent").innerHTML = '<p class="placeholder">Listening for captions…</p>';
         // Seed the mute/camera-off indicator from whatever state the teacher
         // was already in — a student who joins mid-mute shouldn't have to
@@ -1090,8 +1163,12 @@ async function pollForActiveClass() {
       clearInterval(studentChatPoll);
       closeStudentWebSocket();
       document.getElementById("noActiveClassMsg").textContent = "No class is live right now for your college. This checks every few seconds.";
+      document.getElementById("noActiveClassMsg").classList.remove("hidden");
+      document.getElementById("liveClassCard")?.classList.add("hidden");
+      updateWelcomeHero();
       updateTeacherAvIndicator(false, false);
       loadPastRecordings(); // the class that just ended should show up here now
+      loadRecentClassesTable();
     }
   } catch (e) { /* silent — keep trying */ }
 }

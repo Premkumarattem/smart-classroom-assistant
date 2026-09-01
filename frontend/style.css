@@ -1629,6 +1629,191 @@ main:focus {
 }
 
 /* =================================================================
+   Student dashboard — single vertical flow, redesigned
+   ================================================================= */
+#studentScreen .board {
+  grid-template-columns: 1fr;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+#studentScreen .panel { min-height: 0; }
+
+/* ---------- Welcome hero ---------- */
+.panel-hero {
+  padding: 22px 28px;
+  background: linear-gradient(135deg, var(--amber) 0%, var(--amber-dark) 100%);
+  border: none;
+}
+.dash-welcome-heading {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--on-accent);
+  margin: 0 0 4px;
+}
+.dash-welcome-sub {
+  font-size: 13.5px;
+  color: rgba(255,255,255,0.88);
+  margin: 0;
+}
+
+/* ---------- Your Classes ---------- */
+.live-class-card {
+  background: var(--board-panel-2);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--alert);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.live-class-card.hidden { display: none; }
+.live-dot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--alert);
+  margin-bottom: 8px;
+}
+#liveClassTitle {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--chalk);
+}
+.live-class-meta {
+  font-size: 13px;
+  color: var(--chalk-dim);
+  margin: 0 0 14px;
+}
+
+.classes-list-wrap { margin-top: 6px; }
+.classes-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chalk-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 10px;
+}
+.classes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.classes-table th {
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--chalk-dim);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--rule);
+}
+.classes-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--chalk);
+  vertical-align: middle;
+}
+.classes-table td.placeholder {
+  font-style: italic;
+  color: var(--chalk-dim);
+}
+.classes-table .class-status-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.classes-table .class-status-pill.status-live {
+  background: rgba(214,65,90,0.12);
+  color: var(--alert);
+}
+.classes-table .class-status-pill.status-ended {
+  background: rgba(14,138,138,0.12);
+  color: var(--teal-text);
+}
+.classes-table .rec-watch-link {
+  color: var(--amber);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 12.5px;
+}
+.classes-table .rec-watch-link:hover { text-decoration: underline; }
+
+/* ---------- Live class: video + controls + mind map side ---------- */
+.live-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .live-grid { grid-template-columns: 1fr; }
+}
+
+.live-video-wrap-big {
+  aspect-ratio: 16/9.4;
+}
+
+.live-control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.live-lang-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--chalk-dim);
+  background: var(--board-panel-2);
+}
+.live-lang-pill select {
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--chalk);
+  cursor: pointer;
+}
+.live-summary-card {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--rule);
+}
+
+.live-side-col {
+  position: sticky;
+  top: 20px;
+}
+.topic-map-card {
+  background: var(--board-panel-2);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 16px;
+}
+.topic-map-card .mindmap-container { margin-top: 12px; }
+
+/* =================================================================
    Live video (student side, WebRTC)
    ================================================================= */
 .live-video-wrap {

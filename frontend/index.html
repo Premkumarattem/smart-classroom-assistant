@@ -222,7 +222,7 @@
       <div class="sidebar-brand-text"><strong>EduAccess</strong><small>Smart Classroom</small></div>
     </div>
     <nav class="sidebar-nav" aria-label="Student navigation">
-      <a class="sidebar-link active" href="#panelTranscript"><span class="sidebar-icon">▦</span> Dashboard</a>
+      <a class="sidebar-link active" href="#panelHero"><span class="sidebar-icon">▦</span> Dashboard</a>
       <a class="sidebar-link" href="#panelTranscript"><span class="sidebar-icon">▶</span> Live Class</a>
       <a class="sidebar-link" href="#panelQa"><span class="sidebar-icon">❓</span> Ask &amp; Get Help</a>
       <a class="sidebar-link" href="#panelStudy"><span class="sidebar-icon">📖</span> Study Tools</a>
@@ -247,85 +247,129 @@
   </header>
 
   <main class="board" tabindex="-1" aria-label="Student dashboard">
-    <section class="panel panel-transcript" id="panelTranscript">
-      <div class="panel-head"><span class="panel-number">I</span><h2>Live Captions &amp; Notes</h2></div>
+
+    <!-- ===== Welcome hero ===== -->
+    <section class="panel panel-hero" id="panelHero">
+      <h1 id="dashWelcomeHeading" class="dash-welcome-heading">Welcome!</h1>
+      <p id="dashWelcomeSub" class="dash-welcome-sub">Checking your classroom for a live class…</p>
+    </section>
+
+    <!-- ===== Your classes: live now + join + recent list ===== -->
+    <section class="panel panel-classes" id="panelClasses">
+      <div class="panel-head"><span class="panel-number">I</span><h2>Your Classes</h2></div>
+
+      <div id="liveClassCard" class="live-class-card hidden">
+        <span class="live-dot-badge">● LIVE NOW</span>
+        <h3 id="liveClassTitle">—</h3>
+        <p id="liveClassMeta" class="live-class-meta"></p>
+        <button id="joinLiveClassBtn" class="btn btn-primary">▶ Join Live Class</button>
+      </div>
+
       <p class="hint" id="noActiveClassMsg">No class is live right now for your college. This checks every few seconds.</p>
 
-      <div class="caption-lang-row">
-        <label for="captionLanguageSelect">🌐 Caption language</label>
-        <select id="captionLanguageSelect">
-          <option value="english">English</option>
-          <option value="telugu">తెలుగు (Telugu)</option>
-          <option value="hindi">हिन्दी (Hindi)</option>
-        </select>
-        <span id="captionLangNote" class="caption-lang-note"></span>
-      </div>
-
-      <div class="live-video-wrap">
-        <video id="liveVideoStudent" autoplay playsinline></video>
-        <p class="live-video-status hidden" id="liveVideoStatus">No class is live right now.</p>
-        <p class="caption-overlay hidden" id="captionOverlay" aria-live="polite"></p>
-        <p class="av-state-overlay hidden" id="avStateOverlay" aria-live="polite"></p>
-      </div>
-
-      <div class="transcript-search">
-        <input type="text" id="transcriptSearchInput" placeholder="🔍 Search the transcript (e.g. 'database', 'sorting')…" aria-label="Search transcript" />
-        <button id="transcriptSearchPrev" class="btn btn-ghost btn-small" aria-label="Previous match">↑</button>
-        <button id="transcriptSearchNext" class="btn btn-ghost btn-small" aria-label="Next match">↓</button>
-        <span id="transcriptSearchCount" class="search-count"></span>
-      </div>
-
-      <div class="transcript-box" id="transcriptBoxStudent" aria-live="polite" role="log" aria-label="Live lecture captions">
-        <p class="placeholder">Live captions will appear here once a class starts…</p>
-      </div>
-
-      <div class="sign-glossary" id="signGlossary">
-        <h3 class="mini-head">🤟 Sign Language Glossary <span class="proto-tag">prototype</span></h3>
-        <p class="hint">Illustrative reference cards for common classroom phrases — highlights when heard in class. Not verified ASL/ISL; a real deployment would use filmed clips from a certified signer.</p>
-        <div class="sign-grid" id="signGrid"></div>
-      </div>
-
-      <button id="explainBtn" class="btn btn-explain" aria-label="Explain the last part of the lecture more simply">🤔 I didn't understand that — explain simply</button>
-      <div id="explainCard" class="explain-card hidden" aria-live="polite">
-        <div class="explain-head">
-          <span>simple explanation</span>
-          <button id="readExplainBtn" class="btn btn-ghost btn-small">🔊 read aloud</button>
-        </div>
-        <p id="explainText"></p>
-      </div>
-
-      <div class="notes-box">
-        <div class="notes-head">
-          <span>auto notes</span>
-          <span class="notes-head-actions">
-            <button id="saveNotesBtn" class="btn btn-ghost btn-small">💾 save</button>
-            <button id="readNotesBtn" class="btn btn-ghost btn-small">🔊 read aloud</button>
-            <button id="summarizeBtn" class="btn btn-ghost btn-small">refresh notes</button>
-          </span>
-        </div>
-        <div id="notesContent" class="notes-content">
-          <p class="placeholder">Bullet notes generate automatically as the lecture progresses.</p>
-        </div>
-      </div>
-
-      <div class="past-recordings">
-        <div class="notes-head">
-          <span>past class recordings</span>
+      <div class="classes-list-wrap">
+        <div class="classes-list-head">
+          <span>Recent classes</span>
           <button id="refreshRecordingsBtn" class="btn btn-ghost btn-small">refresh</button>
         </div>
-        <ul id="pastRecordingsList" class="recordings-list">
-          <li class="placeholder">Recordings appear here once a class from your college has ended.</li>
-        </ul>
+        <table class="classes-table" aria-label="Recent classes at your college">
+          <thead>
+            <tr><th>Subject</th><th>Teacher</th><th>Date &amp; time</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="recentClassesTableBody">
+            <tr><td colspan="5" class="placeholder">Recordings appear here once a class from your college has ended.</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <section class="panel panel-qa" id="panelQa">
-      <div class="panel-head"><span class="panel-number">II</span><h2>Ask &amp; Get Help</h2></div>
+    <!-- ===== Live class: video + controls + summary, mind map alongside ===== -->
+    <section class="panel panel-live" id="panelTranscript">
+      <div class="panel-head"><span class="panel-number">II</span><h2>Live Class</h2></div>
 
-      <div class="doubt-actions">
-        <button id="raiseHandBtn" class="btn btn-primary btn-wide" aria-label="Raise hand to ask the teacher a question">🖐 Raise Hand</button>
-        <button id="emergencyBtn" class="btn btn-emergency btn-wide" aria-label="Send urgent emergency alert to the teacher">🚨 Emergency Help</button>
+      <div class="live-grid">
+        <div class="live-main-col">
+
+          <div class="live-video-wrap live-video-wrap-big">
+            <video id="liveVideoStudent" autoplay playsinline></video>
+            <p class="live-video-status hidden" id="liveVideoStatus">No class is live right now.</p>
+            <p class="caption-overlay hidden" id="captionOverlay" aria-live="polite"></p>
+            <p class="av-state-overlay hidden" id="avStateOverlay" aria-live="polite"></p>
+          </div>
+
+          <div class="live-control-row">
+            <button id="raiseHandBtn" class="btn btn-primary" aria-label="Raise hand to ask the teacher a question">🖐 Raise Hand</button>
+            <label class="live-lang-pill" for="captionLanguageSelect">
+              🌐
+              <select id="captionLanguageSelect">
+                <option value="english">English</option>
+                <option value="telugu">తెలుగు (Telugu)</option>
+                <option value="hindi">हिन्दी (Hindi)</option>
+              </select>
+            </label>
+            <button id="emergencyBtn" class="btn btn-emergency" aria-label="Send urgent emergency alert to the teacher">🚨 Emergency</button>
+            <span id="captionLangNote" class="caption-lang-note"></span>
+          </div>
+
+          <div class="transcript-search">
+            <input type="text" id="transcriptSearchInput" placeholder="🔍 Search the transcript (e.g. 'database', 'sorting')…" aria-label="Search transcript" />
+            <button id="transcriptSearchPrev" class="btn btn-ghost btn-small" aria-label="Previous match">↑</button>
+            <button id="transcriptSearchNext" class="btn btn-ghost btn-small" aria-label="Next match">↓</button>
+            <span id="transcriptSearchCount" class="search-count"></span>
+          </div>
+
+          <div class="transcript-box" id="transcriptBoxStudent" aria-live="polite" role="log" aria-label="Live lecture captions">
+            <p class="placeholder">Live captions will appear here once a class starts…</p>
+          </div>
+
+          <div class="sign-glossary" id="signGlossary">
+            <h3 class="mini-head">🤟 Sign Language Glossary <span class="proto-tag">prototype</span></h3>
+            <p class="hint">Illustrative reference cards for common classroom phrases — highlights when heard in class. Not verified ASL/ISL; a real deployment would use filmed clips from a certified signer.</p>
+            <div class="sign-grid" id="signGrid"></div>
+          </div>
+
+          <div class="live-summary-card">
+            <h3 class="mini-head">📋 Live Session Summary <span class="chat-sub">— simple, easy-to-understand notes, read aloud any time</span></h3>
+
+            <button id="explainBtn" class="btn btn-explain" aria-label="Explain the last part of the lecture more simply">🤔 I didn't understand that — explain simply</button>
+            <div id="explainCard" class="explain-card hidden" aria-live="polite">
+              <div class="explain-head">
+                <span>simple explanation</span>
+                <button id="readExplainBtn" class="btn btn-ghost btn-small">🔊 read aloud</button>
+              </div>
+              <p id="explainText"></p>
+            </div>
+
+            <div class="notes-box">
+              <div class="notes-head">
+                <span>auto notes</span>
+                <span class="notes-head-actions">
+                  <button id="saveNotesBtn" class="btn btn-ghost btn-small">💾 save</button>
+                  <button id="readNotesBtn" class="btn btn-ghost btn-small">🔊 read aloud</button>
+                  <button id="summarizeBtn" class="btn btn-ghost btn-small">refresh notes</button>
+                </span>
+              </div>
+              <div id="notesContent" class="notes-content">
+                <p class="placeholder">Bullet notes generate automatically as the lecture progresses.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <aside class="live-side-col">
+          <div class="topic-map-card">
+            <h3 class="mini-head">🧠 Topic Map</h3>
+            <button id="mindmapBtn" class="btn btn-primary btn-wide btn-small">Generate Mind Map</button>
+            <div id="mindmapContainer" class="mindmap-container"></div>
+          </div>
+        </aside>
       </div>
+    </section>
+
+    <!-- ===== Teacher chat + AI chat ===== -->
+    <section class="panel panel-qa" id="panelQa">
+      <div class="panel-head"><span class="panel-number">III</span><h2>Ask &amp; Get Help</h2></div>
 
       <div class="chat-block chat-block-ai">
         <h3 class="mini-head mini-head-ai">🤖 AI Chat <span class="chat-sub">— answers grounded only in today's lecture</span></h3>
@@ -351,7 +395,7 @@
     </section>
 
     <section class="panel panel-study" id="panelStudy">
-      <div class="panel-head"><span class="panel-number">III</span><h2>Study Tools</h2></div>
+      <div class="panel-head"><span class="panel-number">IV</span><h2>Study Tools</h2></div>
 
       <div class="badge-row" id="badgeRow"></div>
       <p class="activity-strip" id="activityStrip"></p>
@@ -361,9 +405,6 @@
 
       <button id="quizBtn" class="btn btn-primary btn-wide" style="margin-top:14px;">📝 Generate Quiz</button>
       <div id="quizContainer" class="quiz-container"></div>
-
-      <button id="mindmapBtn" class="btn btn-primary btn-wide" style="margin-top:14px;">🧠 Generate Mind Map</button>
-      <div id="mindmapContainer" class="mindmap-container"></div>
 
       <div class="ocr-section">
         <h3 class="mini-head">📖 Reading Helper — photograph any page</h3>
@@ -379,6 +420,15 @@
         <h3 class="mini-head">📚 My Revision Notes</h3>
         <ul id="revisionNotesList" class="revision-list">
           <li class="placeholder">Notes you save will appear here, across every class.</li>
+        </ul>
+      </div>
+
+      <div class="past-recordings">
+        <div class="notes-head">
+          <span>past class recordings</span>
+        </div>
+        <ul id="pastRecordingsList" class="recordings-list">
+          <li class="placeholder">Recordings appear here once a class from your college has ended.</li>
         </ul>
       </div>
     </section>
