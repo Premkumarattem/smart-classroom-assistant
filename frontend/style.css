@@ -1804,6 +1804,8 @@ main:focus {
 .live-side-col {
   position: sticky;
   top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
 }
 .topic-map-card {
   background: var(--board-panel-2);
@@ -1813,15 +1815,12 @@ main:focus {
 }
 .topic-map-card .mindmap-container { margin-top: 12px; }
 
-/* ---------- AI Chat + Teacher Chat, side by side under the video ---------- */
-.chat-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* ---------- AI Chat + Teacher Chat, stacked below the Topic Map in the sidebar ---------- */
+.chat-col {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
-  margin-bottom: 18px;
-}
-@media (max-width: 720px) {
-  .chat-row { grid-template-columns: 1fr; }
+  margin-top: 16px;
 }
 .chat-box {
   background: var(--board-panel-2);

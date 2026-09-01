@@ -311,30 +311,6 @@
             <span id="captionLangNote" class="caption-lang-note"></span>
           </div>
 
-          <div class="chat-row" id="panelQa">
-            <div class="chat-block chat-block-ai chat-box">
-              <h3 class="mini-head mini-head-ai">🤖 AI Chat <span class="chat-sub">— answers grounded only in today's lecture</span></h3>
-              <div class="qa-thread" id="qaThread" aria-live="polite" role="log" aria-label="AI chat — questions and answers">
-                <p class="placeholder">Questions are answered using only what's been said in class so far.</p>
-              </div>
-              <form id="qaForm" class="qa-form">
-                <input type="text" id="qaInput" placeholder="Ask the AI about today's lecture…" autocomplete="off" />
-                <button type="submit" class="btn btn-primary">Ask AI</button>
-              </form>
-            </div>
-
-            <div class="chat-block chat-block-teacher chat-box">
-              <h3 class="mini-head mini-head-teacher">👩‍🏫 Teacher Chat <span class="chat-sub">— goes to your teacher directly, not AI</span></h3>
-              <div class="qa-thread chat-thread" id="studentChatThread" aria-label="Teacher chat">
-                <p class="placeholder">Type instead of speaking — the teacher sees this live.</p>
-              </div>
-              <form id="studentChatForm" class="qa-form">
-                <input type="text" id="studentChatInput" placeholder="Message your teacher…" autocomplete="off" />
-                <button type="submit" class="btn btn-primary">Send to Teacher</button>
-              </form>
-            </div>
-          </div>
-
           <div class="transcript-search">
             <input type="text" id="transcriptSearchInput" placeholder="🔍 Search the transcript (e.g. 'database', 'sorting')…" aria-label="Search transcript" />
             <button id="transcriptSearchPrev" class="btn btn-ghost btn-small" aria-label="Previous match">↑</button>
@@ -386,6 +362,30 @@
             <h3 class="mini-head">🧠 Topic Map</h3>
             <button id="mindmapBtn" class="btn btn-primary btn-wide btn-small">Generate Mind Map</button>
             <div id="mindmapContainer" class="mindmap-container"></div>
+          </div>
+
+          <div class="chat-col" id="panelQa">
+            <div class="chat-block chat-block-ai chat-box">
+              <h3 class="mini-head mini-head-ai">🤖 AI Chat <span class="chat-sub">— answers grounded only in today's lecture</span></h3>
+              <div class="qa-thread" id="qaThread" aria-live="polite" role="log" aria-label="AI chat — questions and answers">
+                <p class="placeholder">Questions are answered using only what's been said in class so far.</p>
+              </div>
+              <form id="qaForm" class="qa-form">
+                <input type="text" id="qaInput" placeholder="Ask the AI about today's lecture…" autocomplete="off" />
+                <button type="submit" class="btn btn-primary">Ask AI</button>
+              </form>
+            </div>
+
+            <div class="chat-block chat-block-teacher chat-box">
+              <h3 class="mini-head mini-head-teacher">👩‍🏫 Teacher Chat <span class="chat-sub">— goes to your teacher directly, not AI</span></h3>
+              <div class="qa-thread chat-thread" id="studentChatThread" aria-label="Teacher chat">
+                <p class="placeholder">Type instead of speaking — the teacher sees this live.</p>
+              </div>
+              <form id="studentChatForm" class="qa-form">
+                <input type="text" id="studentChatInput" placeholder="Message your teacher…" autocomplete="off" />
+                <button type="submit" class="btn btn-primary">Send to Teacher</button>
+              </form>
+            </div>
           </div>
         </aside>
       </div>
