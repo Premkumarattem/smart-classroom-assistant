@@ -224,7 +224,7 @@
     <nav class="sidebar-nav" aria-label="Student navigation">
       <a class="sidebar-link active" href="#panelHero"><span class="sidebar-icon">▦</span> Dashboard</a>
       <a class="sidebar-link" href="#panelTranscript"><span class="sidebar-icon">▶</span> Live Class</a>
-      <a class="sidebar-link" href="#panelQa"><span class="sidebar-icon">❓</span> Ask &amp; Get Help</a>
+      <a class="sidebar-link" href="#panelQa"><span class="sidebar-icon">❓</span> AI &amp; Teacher Chat</a>
       <a class="sidebar-link" href="#panelStudy"><span class="sidebar-icon">📖</span> Study Tools</a>
       <button type="button" class="sidebar-link" id="settingsNavBtn"><span class="sidebar-icon">⚙</span> Settings</button>
     </nav>
@@ -298,7 +298,7 @@
           </div>
 
           <div class="live-control-row">
-            <button id="raiseHandBtn" class="btn btn-primary" aria-label="Raise hand to ask the teacher a question">🖐 Raise Hand</button>
+            <button id="raiseHandBtn" class="btn btn-primary btn-large" aria-label="Raise hand to ask the teacher a question">🖐 Raise Hand</button>
             <label class="live-lang-pill" for="captionLanguageSelect">
               🌐
               <select id="captionLanguageSelect">
@@ -307,8 +307,32 @@
                 <option value="hindi">हिन्दी (Hindi)</option>
               </select>
             </label>
-            <button id="emergencyBtn" class="btn btn-emergency" aria-label="Send urgent emergency alert to the teacher">🚨 Emergency</button>
+            <button id="emergencyBtn" class="btn btn-emergency btn-large" aria-label="Send urgent emergency alert to the teacher">🚨 Emergency</button>
             <span id="captionLangNote" class="caption-lang-note"></span>
+          </div>
+
+          <div class="chat-row" id="panelQa">
+            <div class="chat-block chat-block-ai chat-box">
+              <h3 class="mini-head mini-head-ai">🤖 AI Chat <span class="chat-sub">— answers grounded only in today's lecture</span></h3>
+              <div class="qa-thread" id="qaThread" aria-live="polite" role="log" aria-label="AI chat — questions and answers">
+                <p class="placeholder">Questions are answered using only what's been said in class so far.</p>
+              </div>
+              <form id="qaForm" class="qa-form">
+                <input type="text" id="qaInput" placeholder="Ask the AI about today's lecture…" autocomplete="off" />
+                <button type="submit" class="btn btn-primary">Ask AI</button>
+              </form>
+            </div>
+
+            <div class="chat-block chat-block-teacher chat-box">
+              <h3 class="mini-head mini-head-teacher">👩‍🏫 Teacher Chat <span class="chat-sub">— goes to your teacher directly, not AI</span></h3>
+              <div class="qa-thread chat-thread" id="studentChatThread" aria-label="Teacher chat">
+                <p class="placeholder">Type instead of speaking — the teacher sees this live.</p>
+              </div>
+              <form id="studentChatForm" class="qa-form">
+                <input type="text" id="studentChatInput" placeholder="Message your teacher…" autocomplete="off" />
+                <button type="submit" class="btn btn-primary">Send to Teacher</button>
+              </form>
+            </div>
           </div>
 
           <div class="transcript-search">
@@ -367,35 +391,11 @@
       </div>
     </section>
 
-    <!-- ===== Teacher chat + AI chat ===== -->
-    <section class="panel panel-qa" id="panelQa">
-      <div class="panel-head"><span class="panel-number">III</span><h2>Ask &amp; Get Help</h2></div>
-
-      <div class="chat-block chat-block-ai">
-        <h3 class="mini-head mini-head-ai">🤖 AI Chat <span class="chat-sub">— answers grounded only in today's lecture</span></h3>
-        <div class="qa-thread" id="qaThread" aria-live="polite" role="log" aria-label="AI chat — questions and answers">
-          <p class="placeholder">Questions are answered using only what's been said in class so far.</p>
-        </div>
-        <form id="qaForm" class="qa-form">
-          <input type="text" id="qaInput" placeholder="Ask the AI about today's lecture…" autocomplete="off" />
-          <button type="submit" class="btn btn-primary">Ask AI</button>
-        </form>
-      </div>
-
-      <div class="chat-block chat-block-teacher">
-        <h3 class="mini-head mini-head-teacher">👩‍🏫 Teacher Chat <span class="chat-sub">— goes to your teacher directly, not AI</span></h3>
-        <div class="qa-thread chat-thread" id="studentChatThread" aria-label="Teacher chat">
-          <p class="placeholder">Type instead of speaking — the teacher sees this live.</p>
-        </div>
-        <form id="studentChatForm" class="qa-form">
-          <input type="text" id="studentChatInput" placeholder="Message your teacher…" autocomplete="off" />
-          <button type="submit" class="btn btn-primary">Send to Teacher</button>
-        </form>
-      </div>
-    </section>
+    <!-- AI Chat + Teacher Chat now live inside the Live Class panel above,
+         directly under the video, in their own side-by-side boxes. -->
 
     <section class="panel panel-study" id="panelStudy">
-      <div class="panel-head"><span class="panel-number">IV</span><h2>Study Tools</h2></div>
+      <div class="panel-head"><span class="panel-number">III</span><h2>Study Tools</h2></div>
 
       <div class="badge-row" id="badgeRow"></div>
       <p class="activity-strip" id="activityStrip"></p>

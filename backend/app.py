@@ -32,6 +32,7 @@ import hashlib
 import secrets
 import json
 import base64
+import asyncio
 from datetime import datetime
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, UploadFile, File, Header, WebSocket, WebSocketDisconnect
@@ -637,6 +638,11 @@ async def class_websocket(
     except WebSocketDisconnect:
         manager.disconnect(session_id, websocket)
         await manager.broadcast_presence(session_id)
+        if role == "teacher":
+            # Teacher's connection just dropped — start the grace-period
+            # watch. If they don't come back (crash, closed tab, walked
+            # away) the class auto-ends so it stops showing as "LIVE NOW".
+            asyncio.create_task(auto_end_class_if_teacher_gone(session_id))
 
 
 # ---------------------------------------------------------------
@@ -740,14 +746,16 @@ def try_convert_to_mp4(recording_path: Optional[str]) -> Optional[str]:
         return recording_path
 
 
-@app.post("/api/classes/{session_id}/stop")
-def stop_class(session_id: int, authorization: Optional[str] = Header(None)):
-    require_user(authorization)
+def _finalize_class_stop(session_id: int) -> Optional[dict]:
+    """Shared by the teacher's explicit Stop Class action and the automatic
+    end-of-class safety net below (teacher disconnects and never comes back).
+    Generates AI smart-notes from the transcript and marks the session ended.
+    Returns None if the session doesn't exist or is already ended."""
     conn = get_db()
     row = conn.execute("SELECT * FROM class_sessions WHERE id = ?", (session_id,)).fetchone()
-    if not row:
+    if not row or row["status"] != "active":
         conn.close()
-        raise HTTPException(status_code=404, detail="Class session not found.")
+        return None
 
     transcript = row["transcript"] or ""
     ai_notes = "No transcript was captured for this class."
@@ -775,6 +783,38 @@ def stop_class(session_id: int, authorization: Optional[str] = Header(None)):
     conn.commit()
     conn.close()
     return {"ok": True, "ai_notes": ai_notes, "recording_path": final_recording_path}
+
+
+# How long to wait, after a teacher's socket drops, before treating the class
+# as actually over. A page refresh reconnects well inside this window, so a
+# real teacher mid-class is never bumped — only a class the teacher has
+# genuinely left (crash, closed tab, walked away) auto-ends, so students
+# never sit looking at a "LIVE NOW" class that quietly isn't happening anymore.
+TEACHER_GONE_GRACE_SECONDS = 20
+
+
+async def auto_end_class_if_teacher_gone(session_id: int):
+    await asyncio.sleep(TEACHER_GONE_GRACE_SECONDS)
+    still_has_teacher = any(
+        c["role"] == "teacher" for c in manager.active.get(session_id, [])
+    )
+    if still_has_teacher:
+        return  # teacher reconnected (e.g. refreshed the page) — leave it live
+    result = _finalize_class_stop(session_id)
+    if result is not None:
+        # Tell everyone still connected (students) immediately, rather than
+        # waiting for their next poll — captions stop, and the dashboard
+        # drops the "LIVE NOW" card right away.
+        await manager.broadcast(session_id, {"type": "class_ended", "ai_notes": result["ai_notes"]})
+
+
+@app.post("/api/classes/{session_id}/stop")
+def stop_class(session_id: int, authorization: Optional[str] = Header(None)):
+    require_user(authorization)
+    result = _finalize_class_stop(session_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Class session not found or already ended.")
+    return result
 
 
 @app.get("/api/classes/{session_id}")

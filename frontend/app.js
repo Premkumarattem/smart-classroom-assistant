@@ -1204,6 +1204,7 @@ function connectStudentWebSocket(sessionId) {
     if (msg.type === "webrtc_offer") await handleTeacherOffer(msg);
     if (msg.type === "webrtc_ice" && msg.candidate) await handleTeacherIce(msg);
     if (msg.type === "av_state") updateTeacherAvIndicator(msg.mic_muted, msg.camera_off);
+    if (msg.type === "class_ended") pollForActiveClass(); // teacher's gone — refresh right away instead of waiting for the next poll tick
   };
   studentWS.onerror = () => console.warn("Student WebSocket error — falling back to polling only.");
 }

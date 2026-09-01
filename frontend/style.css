@@ -1664,7 +1664,7 @@ main:focus {
   border: 1px solid var(--rule);
   border-left: 4px solid var(--alert);
   border-radius: 12px;
-  padding: 18px 20px;
+  padding: 22px 24px;
   margin-bottom: 16px;
 }
 .live-class-card.hidden { display: none; }
@@ -1673,23 +1673,23 @@ main:focus {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--alert);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 #liveClassTitle {
   font-family: var(--font-display);
-  font-size: 19px;
+  font-size: 24px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   color: var(--chalk);
 }
 .live-class-meta {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--chalk-dim);
-  margin: 0 0 14px;
+  margin: 0 0 16px;
 }
 
 .classes-list-wrap { margin-top: 6px; }
@@ -1812,6 +1812,45 @@ main:focus {
   padding: 16px;
 }
 .topic-map-card .mindmap-container { margin-top: 12px; }
+
+/* ---------- AI Chat + Teacher Chat, side by side under the video ---------- */
+.chat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+@media (max-width: 720px) {
+  .chat-row { grid-template-columns: 1fr; }
+}
+.chat-box {
+  background: var(--board-panel-2);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 0;
+}
+.chat-block-ai.chat-box { border-top: 3px solid var(--purple); }
+.chat-block-teacher.chat-box { border-top: 3px solid var(--teal); }
+
+/* ---------- Bigger, simpler controls — this app is built for
+   accessibility, so the most-used live-class actions get extra size
+   and breathing room rather than sitting the same size as minor buttons. ---------- */
+.btn-large {
+  font-size: 15px;
+  padding: 14px 22px;
+  border-radius: 10px;
+}
+.live-class-card .btn-large,
+#joinLiveClassBtn {
+  font-size: 16px;
+  padding: 15px 26px;
+}
+.live-lang-pill {
+  font-size: 15px;
+  padding: 10px 14px;
+}
+.live-lang-pill select { font-size: 15px; }
 
 /* =================================================================
    Live video (student side, WebRTC)
