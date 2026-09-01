@@ -14,10 +14,13 @@
 
 <!-- ================= AUTH SCREEN ================= -->
 <div id="authScreen" class="auth-screen">
-  <div class="chalk-dust"></div>
+  <div class="auth-brand">
+    <span class="auth-logo-mark">🎓</span>
+    <h1 class="auth-brand-name">EduAccess</h1>
+    <p class="auth-brand-tag">Smart Classroom Assistant</p>
+  </div>
   <div class="auth-card">
-    <span class="eyebrow">Smart Classroom Assistant</span>
-    <h1 class="auth-title">Every student, included.</h1>
+    <h2 class="auth-title">Every student, included.</h2>
     <p class="auth-sub">Live captions, one-tap simple re-explanations, hand-raise and chat for students who can't speak — in English, Telugu, or Hindi.</p>
 
     <!-- ROLE TABS -->
@@ -84,9 +87,25 @@
 </div>
 
 <!-- ================= TEACHER DASHBOARD ================= -->
-<div id="teacherScreen" class="hidden">
+<div id="teacherScreen" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-logo">🎓</span>
+      <div class="sidebar-brand-text"><strong>EduAccess</strong><small>Smart Classroom</small></div>
+    </div>
+    <nav class="sidebar-nav" aria-label="Teacher navigation">
+      <a class="sidebar-link active" href="#panelClassControl"><span class="sidebar-icon">▦</span> Dashboard</a>
+      <a class="sidebar-link" href="#panelClassControl"><span class="sidebar-icon">▶</span> Class Session</a>
+      <a class="sidebar-link" href="#panelHandRaises"><span class="sidebar-icon">✋</span> Raised Hands</a>
+      <a class="sidebar-link" href="#panelChat"><span class="sidebar-icon">💬</span> Student Chat</a>
+      <a class="sidebar-link" href="#panelTimetable"><span class="sidebar-icon">🗂</span> My Classes</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <button id="logoutBtnTeacher" class="sidebar-link sidebar-logout"><span class="sidebar-icon">⎋</span> Log out</button>
+    </div>
+  </aside>
+  <div class="app-main">
   <header class="ledger-header">
-    <div class="chalk-dust"></div>
     <div class="header-row">
       <div class="header-title">
         <span class="eyebrow" id="teacherCollegeLabel">College</span>
@@ -95,13 +114,12 @@
       <div class="session-meta">
         <span id="welcomeUserTeacher"></span>
         <span id="clockTeacher">--:--:--</span>
-        <button id="logoutBtnTeacher" class="btn btn-ghost btn-small">Log out</button>
       </div>
     </div>
   </header>
 
   <main class="board board-teacher" tabindex="-1" aria-label="Teacher dashboard">
-    <section class="panel panel-class-control">
+    <section class="panel panel-class-control" id="panelClassControl">
       <div class="panel-head"><span class="panel-number">I</span><h2>Class Session</h2></div>
 
       <div class="a11y-snapshot" id="a11ySnapshot">
@@ -193,12 +211,29 @@
       </ul>
     </section>
   </main>
+  </div>
 </div>
 
 <!-- ================= STUDENT DASHBOARD ================= -->
-<div id="studentScreen" class="hidden">
+<div id="studentScreen" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-logo">🎓</span>
+      <div class="sidebar-brand-text"><strong>EduAccess</strong><small>Smart Classroom</small></div>
+    </div>
+    <nav class="sidebar-nav" aria-label="Student navigation">
+      <a class="sidebar-link active" href="#panelTranscript"><span class="sidebar-icon">▦</span> Dashboard</a>
+      <a class="sidebar-link" href="#panelTranscript"><span class="sidebar-icon">▶</span> Live Class</a>
+      <a class="sidebar-link" href="#panelQa"><span class="sidebar-icon">❓</span> Ask &amp; Get Help</a>
+      <a class="sidebar-link" href="#panelStudy"><span class="sidebar-icon">📖</span> Study Tools</a>
+      <button type="button" class="sidebar-link" id="settingsNavBtn"><span class="sidebar-icon">⚙</span> Settings</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <button id="logoutBtnStudent" class="sidebar-link sidebar-logout"><span class="sidebar-icon">⎋</span> Log out</button>
+    </div>
+  </aside>
+  <div class="app-main">
   <header class="ledger-header">
-    <div class="chalk-dust"></div>
     <div class="header-row">
       <div class="header-title">
         <span class="eyebrow">Room · Live Session</span>
@@ -207,13 +242,12 @@
       <div class="session-meta">
         <span id="welcomeUserStudent"></span>
         <span id="clockStudent">--:--:--</span>
-        <button id="logoutBtnStudent" class="btn btn-ghost btn-small">Log out</button>
       </div>
     </div>
   </header>
 
   <main class="board" tabindex="-1" aria-label="Student dashboard">
-    <section class="panel panel-transcript">
+    <section class="panel panel-transcript" id="panelTranscript">
       <div class="panel-head"><span class="panel-number">I</span><h2>Live Captions &amp; Notes</h2></div>
       <p class="hint" id="noActiveClassMsg">No class is live right now for your college. This checks every few seconds.</p>
 
@@ -285,7 +319,7 @@
       </div>
     </section>
 
-    <section class="panel panel-qa">
+    <section class="panel panel-qa" id="panelQa">
       <div class="panel-head"><span class="panel-number">II</span><h2>Ask &amp; Get Help</h2></div>
 
       <div class="doubt-actions">
@@ -316,7 +350,7 @@
       </div>
     </section>
 
-    <section class="panel panel-study">
+    <section class="panel panel-study" id="panelStudy">
       <div class="panel-head"><span class="panel-number">III</span><h2>Study Tools</h2></div>
 
       <div class="badge-row" id="badgeRow"></div>
@@ -349,12 +383,27 @@
       </div>
     </section>
   </main>
+  </div>
 </div>
 
 <!-- ================= COLLEGE ADMIN DASHBOARD ================= -->
-<div id="collegeScreen" class="hidden">
+<div id="collegeScreen" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-logo">🎓</span>
+      <div class="sidebar-brand-text"><strong>EduAccess</strong><small>Smart Classroom</small></div>
+    </div>
+    <nav class="sidebar-nav" aria-label="College admin navigation">
+      <a class="sidebar-link active" href="#panelFilters"><span class="sidebar-icon">▦</span> Dashboard</a>
+      <a class="sidebar-link" href="#panelFilters"><span class="sidebar-icon">🔍</span> Find Classes</a>
+      <a class="sidebar-link" href="#panelClasslist"><span class="sidebar-icon">🗂</span> All Classes</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <button id="logoutBtnCollege" class="sidebar-link sidebar-logout"><span class="sidebar-icon">⎋</span> Log out</button>
+    </div>
+  </aside>
+  <div class="app-main">
   <header class="ledger-header">
-    <div class="chalk-dust"></div>
     <div class="header-row">
       <div class="header-title">
         <span class="eyebrow">Institution Overview</span>
@@ -362,13 +411,12 @@
       </div>
       <div class="session-meta">
         <span id="welcomeUserCollege"></span>
-        <button id="logoutBtnCollege" class="btn btn-ghost btn-small">Log out</button>
       </div>
     </div>
   </header>
 
   <main class="board board-college" tabindex="-1" aria-label="College dashboard">
-    <section class="panel panel-filters">
+    <section class="panel panel-filters" id="panelFilters">
       <div class="panel-head"><span class="panel-number">I</span><h2>Find Classes</h2></div>
       <label class="field-label">Subject <input type="text" id="filterSubject" placeholder="e.g. Physics" /></label>
       <label class="field-label">Teacher <input type="text" id="filterTeacher" placeholder="e.g. Ms. Rao" /></label>
@@ -376,13 +424,14 @@
       <button id="applyFiltersBtn" class="btn btn-primary btn-wide">Search</button>
     </section>
 
-    <section class="panel panel-classlist">
+    <section class="panel panel-classlist" id="panelClasslist">
       <div class="panel-head"><span class="panel-number">II</span><h2>Classes — date, subject &amp; teacher wise</h2></div>
       <ul id="collegeClassList" class="class-list">
         <li class="placeholder">No classes recorded yet for this institution.</li>
       </ul>
     </section>
   </main>
+  </div>
 </div>
 
 <!-- Floating accessibility toolbar (student view only) -->
@@ -436,5 +485,25 @@
 <div class="magnifier-glass hidden" id="magnifierGlass"></div>
 
 <script defer src="app.js"></script>
+<script defer>
+// Purely cosmetic: highlights the clicked sidebar link and routes the
+// "Settings" shortcut to the existing accessibility panel. Does not
+// touch any state app.js relies on.
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.sidebar-nav').forEach(function (nav) {
+    nav.addEventListener('click', function (e) {
+      var link = e.target.closest('.sidebar-link');
+      if (!link || !nav.contains(link)) return;
+      nav.querySelectorAll('.sidebar-link').forEach(function (l) { l.classList.remove('active'); });
+      link.classList.add('active');
+    });
+  });
+  var settingsNavBtn = document.getElementById('settingsNavBtn');
+  var a11yToggle = document.getElementById('a11yToggle');
+  if (settingsNavBtn && a11yToggle) {
+    settingsNavBtn.addEventListener('click', function () { a11yToggle.click(); });
+  }
+});
+</script>
 </body>
 </html>
