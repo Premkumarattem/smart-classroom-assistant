@@ -54,6 +54,28 @@ const loginForm = document.getElementById("loginForm");
 const registerForm = document.getElementById("registerForm");
 const disabilityFieldset = document.getElementById("disabilityFieldset");
 
+// "None of these" is mutually exclusive with every real accessibility need:
+// picking it clears (and disables) the others, and picking any real option
+// un-checks "None" automatically. Prevents contradictory profiles like
+// ["vision", "none"] being saved together.
+const disabilityCheckboxes = Array.from(disabilityFieldset.querySelectorAll('input[type="checkbox"]'));
+const noneCheckbox = disabilityCheckboxes.find((cb) => cb.value === "none");
+const realDisabilityCheckboxes = disabilityCheckboxes.filter((cb) => cb.value !== "none");
+
+noneCheckbox.addEventListener("change", () => {
+  if (noneCheckbox.checked) {
+    realDisabilityCheckboxes.forEach((cb) => { cb.checked = false; cb.disabled = true; });
+  } else {
+    realDisabilityCheckboxes.forEach((cb) => { cb.disabled = false; });
+  }
+});
+
+realDisabilityCheckboxes.forEach((cb) => {
+  cb.addEventListener("change", () => {
+    if (cb.checked) noneCheckbox.checked = false;
+  });
+});
+
 document.getElementById("showRegister").addEventListener("click", (e) => {
   e.preventDefault();
   loginForm.classList.add("hidden");

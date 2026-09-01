@@ -6,9 +6,11 @@
   --chalk:        #F4F6FB; /* near White */
   --chalk-dim:    #A9AFCE; /* Lilac, dimmed for readability */
   --amber:        #FEB100; /* Brand Yellow — primary accent/CTA */
-  --teal:         #00828E; /* Brand Teal — secondary accent */
+  --teal:         #00828E; /* Brand Teal — secondary accent (borders/backgrounds/icons only) */
+  --teal-text:    #1CB8C4; /* Lightened teal for TEXT — #00828E fails WCAG AA (3.72:1) on --board; this passes (7.07:1) */
   --alert:        #FF816E; /* Brand Orange — urgent/emergency */
-  --purple:       #71609E; /* Brand Purple — used for the AI Chat identity */
+  --purple:       #71609E; /* Brand Purple — used for the AI Chat identity (borders/backgrounds only) */
+  --purple-text:  #9B8CC7; /* Lightened purple for TEXT — #71609E fails WCAG AA (3.14:1) on --board; this passes (5.66:1) */
   --turquoise:    #00D6D0; /* Brand Turquoise — used for highlights/success */
   --capgemini-blue: #00A9E0; /* Brand light blue, from the guideline's top swatch */
   --rule:         rgba(212, 211, 241, 0.18); /* Lilac, low opacity, for borders */
@@ -321,7 +323,7 @@ body::after {
 
 .engagement-value {
   font-size: 20px;
-  color: var(--teal);
+  color: var(--teal-text);
   font-weight: 500;
 }
 
@@ -368,7 +370,7 @@ body::after {
 }
 
 #rosterList li.present .mark {
-  color: var(--teal);
+  color: var(--teal-text);
 }
 
 #rosterList li.present .mark::before {
@@ -657,12 +659,12 @@ body::after {
   margin-top: 16px;
 }
 
-.auth-switch a { color: var(--teal); }
+.auth-switch a { color: var(--teal-text); }
 
 .session-meta #welcomeUser {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--teal);
+  color: var(--teal-text);
 }
 
 /* =================================================================
@@ -788,7 +790,7 @@ body.big-targets .a11y-toggle {
   line-height: 1.5;
 }
 
-.recognized-line.active { color: var(--teal); }
+.recognized-line.active { color: var(--teal-text); }
 
 #rosterList li {
   gap: 8px;
@@ -817,7 +819,7 @@ body.big-targets .a11y-toggle {
 
 #rosterList li .enroll-btn.enrolled {
   border-color: var(--teal);
-  color: var(--teal);
+  color: var(--teal-text);
 }
 
 #rosterList li.auto-recognized {
@@ -968,7 +970,7 @@ body.dyslexia-font .explain-card p {
 .student-count-badge {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--teal);
+  color: var(--teal-text);
   background: var(--board-panel);
   border: 1px solid rgba(0, 130, 142, 0.35);
   border-radius: 20px;
@@ -1018,7 +1020,7 @@ body.dyslexia-font .explain-card p {
 .raise-list li .resolve-btn {
   background: transparent;
   border: 1px solid var(--teal);
-  color: var(--teal);
+  color: var(--teal-text);
   border-radius: 5px;
   font-size: 11px;
   padding: 4px 8px;
@@ -1113,7 +1115,7 @@ body.dyslexia-font .explain-card p {
   margin-top: 6px;
   font-family: var(--font-mono);
   font-size: 11.5px;
-  color: var(--teal);
+  color: var(--teal-text);
   text-decoration: none;
   border: 1px solid var(--teal);
   border-radius: 5px;
@@ -1325,7 +1327,7 @@ body.magnifier-active { cursor: none; }
 }
 
 .flashcard .fc-q { color: var(--chalk); font-weight: 600; }
-.flashcard .fc-a { color: var(--teal); display: none; }
+.flashcard .fc-a { color: var(--teal-text); display: none; }
 .flashcard.flipped .fc-q { display: none; }
 .flashcard.flipped .fc-a { display: block; }
 .flashcard:hover { border-color: var(--amber); }
@@ -1666,7 +1668,7 @@ main:focus {
 
 .quiz-question .q-option.correct {
   background: rgba(0, 130, 142, 0.15);
-  color: var(--teal);
+  color: var(--teal-text);
 }
 
 .quiz-question .q-option.incorrect {
@@ -1860,12 +1862,12 @@ body.text-large .caption-overlay,
 .chat-block-ai .qa-thread {
   border-left: 3px solid var(--purple);
 }
-.chat-block-ai .mini-head-ai { color: var(--purple); }
+.chat-block-ai .mini-head-ai { color: var(--purple-text); }
 
 .chat-block-teacher .qa-thread {
   border-left: 3px solid var(--teal);
 }
-.chat-block-teacher .mini-head-teacher { color: var(--teal); }
+.chat-block-teacher .mini-head-teacher { color: var(--teal-text); }
 
 /* =================================================================
    Teacher: Class Timetable + Quiz/GK Results
