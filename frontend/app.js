@@ -1571,6 +1571,44 @@ document.getElementById("flashcardsBtn").addEventListener("click", async () => {
 // =================================================================
 // AI Mind Map
 // =================================================================
+const MM_PALETTE = [
+  { solid: "#0E8A8A", light: "#B9E4E4" }, // teal
+  { solid: "#7C5CD1", light: "#DCD2F5" }, // purple
+  { solid: "#0E9F6E", light: "#BEEEDD" }, // turquoise
+  { solid: "#2C3486", light: "#C7C9EA" }, // indigo
+  { solid: "#B08D00", light: "#F3E4B0" }, // gold
+];
+
+function mmEsc(str) {
+  const div = document.createElement("div");
+  div.textContent = String(str == null ? "" : str);
+  return div.innerHTML;
+}
+
+// Renders the mind map as an actual node-and-branch diagram (colored
+// topic/branch/point nodes joined by connector lines) instead of a
+// plain text outline — much faster to scan visually.
+function renderMindMapDiagram(mm) {
+  const branches = mm.branches || [];
+  let branchesHtml = "";
+  branches.forEach((b, i) => {
+    const c = MM_PALETTE[i % MM_PALETTE.length];
+    const pointsHtml = (b.points || [])
+      .map((p) => `<div class="mm-point-chip" style="--pc-color:${c.light}"><span class="mm-point-dot" style="background:${c.solid}"></span>${mmEsc(p)}</div>`)
+      .join("");
+    branchesHtml += `
+      <div class="mm-branch-block" style="--branch-color:${c.solid}">
+        <div class="mm-branch-node" style="background:${c.solid}">${mmEsc(b.title)}</div>
+        ${pointsHtml ? `<div class="mm-points-wrap" style="--branch-color-light:${c.light}">${pointsHtml}</div>` : ""}
+      </div>`;
+  });
+  return `
+    <div class="mm-diagram">
+      <div class="mm-topic-node">${mmEsc(mm.topic)}</div>
+      <div class="mm-branches">${branchesHtml}</div>
+    </div>`;
+}
+
 document.getElementById("mindmapBtn").addEventListener("click", async () => {
   const btn = document.getElementById("mindmapBtn");
   const container = document.getElementById("mindmapContainer");
@@ -1591,13 +1629,7 @@ document.getElementById("mindmapBtn").addEventListener("click", async () => {
       container.innerHTML = '<p class="placeholder">Nothing to map yet.</p>';
       return;
     }
-    let html = `<div class="mm-topic">${mm.topic}</div>`;
-    (mm.branches || []).forEach((b) => {
-      html += `<div class="mm-branch"><div class="mm-branch-title">${b.title}</div><ul>${
-        (b.points || []).map((p) => `<li>${p}</li>`).join("")
-      }</ul></div>`;
-    });
-    container.innerHTML = html;
+    container.innerHTML = renderMindMapDiagram(mm);
   } catch (err) {
     container.innerHTML = `<p class="placeholder">Couldn't reach the backend at ${API_BASE}.</p>`;
   } finally {
