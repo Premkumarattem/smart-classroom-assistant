@@ -901,6 +901,7 @@ function renderVerifyResult(elId, result) {
     <div class="verify-line"><span>Signature</span>${ok(result.signature_valid)}</div>
     <div class="verify-line"><span>Content binding</span>${ok(result.binding_valid)}</div>
     <div class="verify-status">Status: ${result.status || "UNKNOWN"}</div>
+    ${result.execution_id ? `<a class="verify-download" href="${API_BASE}/api/receipt/${result.execution_id}" download="${result.execution_id}.json" target="_blank" rel="noopener">⬇ Download receipt (verify independently at /verify)</a>` : ""}
   `;
 }
 
@@ -1011,6 +1012,40 @@ document.getElementById("verifyNotesBtn").addEventListener("click", async () => 
     renderVerifyResult(elId, await res.json());
   } catch (err) {
     el.innerHTML = `Couldn't reach the backend at ${API_BASE}.`;
+  }
+});
+
+document.getElementById("showEvidenceTimelineBtn").addEventListener("click", async () => {
+  const list = document.getElementById("evidenceTimelineList");
+  if (!teacherNotesSessionId) {
+    list.classList.remove("hidden");
+    list.innerHTML = "<li>No class selected yet.</li>";
+    return;
+  }
+  list.classList.toggle("hidden");
+  if (list.classList.contains("hidden")) return;
+  list.innerHTML = "<li>Loading…</li>";
+  try {
+    const res = await fetch(`${API_BASE}/api/classes/${teacherNotesSessionId}/evidence`);
+    const data = await res.json();
+    const items = data.timeline || [];
+    if (!items.length) {
+      list.innerHTML = "<li>Nothing logged for this class yet.</li>";
+      return;
+    }
+    // Honest by design: "sealed" items have a real, independently
+    // verifiable Ed25519 receipt (click Verify above / download at
+    // /verify). Everything else is a usage log entry only — real, but
+    // not cryptographically signed, and shown that way rather than
+    // implying every AI touchpoint is verified.
+    list.innerHTML = items.map((it) => `
+      <li>
+        <span>${it.label}</span>
+        <span class="${it.sealed ? "et-sealed" : "et-logged"}">${it.sealed ? "🔒 Sealed" : "Logged"}</span>
+      </li>
+    `).join("");
+  } catch (err) {
+    list.innerHTML = `<li>Couldn't reach the backend at ${API_BASE}.</li>`;
   }
 });
 

@@ -1542,6 +1542,84 @@ def ask(req: AskRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/receipt/{execution_id}")
+def download_receipt(execution_id: str):
+    """
+    Public, unauthenticated on purpose: a receipt only contains hashes,
+    a signature, and the (non-secret) public key needed to check it —
+    never the lecture transcript or notes text themselves. Anyone who
+    already has an execution_id can fetch the receipt and verify it
+    fully offline at /verify, without needing an EduAccess account or
+    even network access to this server after the download.
+    """
+    receipt = _load_receipt(execution_id)
+    if not receipt:
+        raise HTTPException(status_code=404, detail="Unknown execution_id.")
+    return receipt
+
+
+@app.get("/api/classes/{session_id}/evidence")
+def class_evidence_timeline(session_id: int):
+    """
+    Powers the teacher's Evidence Timeline panel. Merges two different
+    kinds of records and is honest about which is which:
+      - ai_evidence_receipts: an actual signed, independently-verifiable
+        receipt exists (notes / quiz / flashcards).
+      - ai_usage_events: a usage log entry exists (e.g. a student asked
+        a question, or used "explain simply") but nothing was sealed —
+        these are shown as logged, not verifiable, on purpose. Live
+        captions and per-sentence caption translation aren't logged at
+        all here: captions come from the browser's own speech
+        recognition (nothing server-side to log), and translation
+        happens too many times per class to usefully seal each one.
+    """
+    conn = get_db()
+    receipts = conn.execute(
+        "SELECT execution_id, artifact_type, created_at FROM ai_evidence_receipts WHERE session_id = ? ORDER BY created_at",
+        (session_id,),
+    ).fetchall()
+    events = conn.execute(
+        "SELECT event_type, created_at FROM ai_usage_events WHERE session_id = ? ORDER BY created_at",
+        (session_id,),
+    ).fetchall()
+    conn.close()
+
+    sealed_types = {r["artifact_type"] for r in receipts}
+    timeline = []
+    for r in receipts:
+        timeline.append({
+            "label": r["artifact_type"].replace("_", " ").title(),
+            "at": r["created_at"],
+            "sealed": True,
+            "execution_id": r["execution_id"],
+        })
+    for e in events:
+        # Don't double-list an event type that already has a receipt entry
+        # (e.g. "quiz" shows once, as sealed, not twice).
+        if e["event_type"] in sealed_types:
+            continue
+        timeline.append({
+            "label": e["event_type"].replace("_", " ").title(),
+            "at": e["created_at"],
+            "sealed": False,
+            "execution_id": None,
+        })
+    timeline.sort(key=lambda x: x["at"])
+    return {"timeline": timeline}
+
+
+@app.get("/verify")
+def verify_page():
+    """Serves the standalone, offline evidence verifier — see frontend/verify.html.
+    Registered before the StaticFiles catch-all mount below so this clean
+    URL works instead of only /verify.html."""
+    from fastapi.responses import FileResponse
+    path = os.path.join(os.path.dirname(__file__), "..", "frontend", "verify.html")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="verify.html not found.")
+    return FileResponse(path)
+
+
 # ---------------------------------------------------------------
 # Serve the frontend from this same backend — this is what makes a
 # single-service deployment possible (one URL, no CORS setup, no second

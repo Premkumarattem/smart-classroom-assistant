@@ -608,6 +608,44 @@ hashing, not a mock. `evidence.py`'s `seal_evidence()` /
 use, so swapping in a real one later — once we have its actual
 docs — is a small change to that one file, not a rewrite of the app.
 
+### `/verify` — an independent, offline verifier
+
+Every sealed receipt can be downloaded (⬇ link under any Verify result,
+or `GET /api/receipt/{execution_id}` directly — unauthenticated on
+purpose, since a receipt contains only hashes, a signature, and a
+non-secret public key, never the actual lecture content) and checked at
+**`/verify`**, a standalone page that does the entire check — Ed25519
+signature + SHA-256 content hash — in the browser using the native Web
+Crypto API. No external JS library, no EduAccess server call required
+once you have the receipt file in hand. That's what "independently
+verifiable" is actually supposed to mean for this kind of system, and
+it's been tested end-to-end (sealed a real receipt, verified it in a
+separate process using the same crypto calls a browser would make,
+confirmed a tampered copy is correctly rejected).
+
+### Evidence Timeline
+
+The teacher dashboard's **🕒 Evidence Timeline** button lists what
+happened during a class and is deliberately honest about scope: items
+with a real signed receipt (notes, quiz, flashcards) show **🔒 Sealed**;
+other AI usage (explain-simply, ask-a-question, mind maps) shows
+**Logged** — a real record exists, but nothing was cryptographically
+signed for it. Live captions and per-sentence caption translation don't
+appear on this timeline at all: captions come from the browser's own
+Web Speech API (nothing server-side to log), and translation happens
+too many times per class to usefully seal each occurrence. We'd rather
+the timeline under-claim than imply everything in the pipeline is
+signed when it isn't.
+
+### The "Verifiable Evidence" badge
+
+You'll see a small **🔒 Verifiable Evidence** badge next to Smart Notes
+and Study Tools. It's deliberately not labeled "Verified by CooL" or
+similar — since this isn't actually wired to CooL's SDK (see above), a
+badge claiming a sponsor's tech verified something would be a false
+claim about that sponsor's product. If real CooL access comes through
+before submission, this is the one string to change.
+
 ## Honest scope notes for judges
 
 - Auth is a lightweight SQLite + salted-hash + bearer-token setup — real
